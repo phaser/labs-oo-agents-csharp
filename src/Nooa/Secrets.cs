@@ -39,39 +39,57 @@ public static partial class Secrets
     /// </summary>
     /// <remarks>
     /// A name that is already set in the process is left alone: the shell value wins. A null value is skipped.
+    /// Project-layer files (inside the project root) are untrusted: they can set only credential-shaped names.
+    /// Bundled and user layers use the name check and the denylist only.
     /// Other values are converted to text. The call is safe to repeat.
     /// </remarks>
     /// <returns>The names that this call set, that is, the names that were missing.</returns>
     public static IReadOnlyList<string> LoadSecretsIntoEnv(ILogger? logger = null)
     {
-        var merged = LayeredConfig.LoadLayeredYaml(FileName, EnvVar, logger: logger);
-        if (!merged.TryGetValue("env", out var envValue) || envValue is null)
+        var accepted = new Dictionary<string, object?>();
+        foreach (var (path, data) in LayeredConfig.LoadLayers(FileName, EnvVar, logger: logger))
         {
-            return [];
-        }
+            if (!data.TryGetValue("env", out var envValue) || envValue is null)
+            {
+                continue;
+            }
 
-        if (envValue is not Dictionary<string, object?> envMap)
-        {
-            logger?.LogWarning("secrets.yaml `env:` is not a mapping ({Type}); ignoring", envValue.GetType().Name);
-            return [];
+            if (envValue is not Dictionary<string, object?> envMap)
+            {
+                logger?.LogWarning("secrets.yaml `env:` is not a mapping ({Type}); ignoring", envValue.GetType().Name);
+                continue;
+            }
+
+            var untrusted = IsProjectLayer(path);
+            foreach (var (name, value) in envMap)
+            {
+                if (!EnvNameRegex().IsMatch(name))
+                {
+                    logger?.LogWarning("secrets.yaml env name {Name} is not a valid environment variable name; ignoring", name);
+                }
+                else if (SecretEnvDenylist.IsDenied(name))
+                {
+                    logger?.LogWarning("secrets.yaml env name {Name} is not allowed (loader, shell, proxy, base-URL or runtime variable); ignoring", name);
+                }
+                else if (untrusted && !SecretEnvDenylist.IsCredentialShaped(name))
+                {
+                    logger?.LogWarning("secrets.yaml env name {Name} is refused in a project-layer file: only credential names (*_API_KEY, *_KEY, *_TOKEN, *_SECRET, *_PASSWORD) are accepted", name);
+                }
+                else if (value is null)
+                {
+                    accepted.Remove(name);
+                }
+                else
+                {
+                    accepted[name] = value;
+                }
+            }
         }
 
         var applied = new List<string>();
-        foreach (var (name, value) in envMap)
+        foreach (var (name, value) in accepted)
         {
-            if (!EnvNameRegex().IsMatch(name))
-            {
-                logger?.LogWarning("secrets.yaml env name {Name} is not a valid environment variable name; ignoring", name);
-                continue;
-            }
-
-            if (SecretEnvDenylist.IsDenied(name))
-            {
-                logger?.LogWarning("secrets.yaml env name {Name} is not allowed (loader, shell, proxy, base-URL or runtime variable); ignoring", name);
-                continue;
-            }
-
-            if (value is null || Environment.GetEnvironmentVariable(name) is not null)
+            if (Environment.GetEnvironmentVariable(name) is not null)
             {
                 // A process value wins. Never overwrite it.
                 continue;
@@ -83,6 +101,25 @@ public static partial class Secrets
 
         return applied;
     }
+
+    /// <summary>
+    /// A file is untrusted (project layer) when it is the project-layer file or lies inside the project directory or project root.
+    /// The user-layer file is always trusted, even when the project root contains the user directory.
+    /// </summary>
+    private static bool IsProjectLayer(string canonicalPath)
+    {
+        if (canonicalPath == NooaPaths.Canonicalize(NooaPaths.GetUserDir(FileName)))
+        {
+            return false;
+        }
+
+        return canonicalPath == NooaPaths.Canonicalize(NooaPaths.GetProjectDir(FileName))
+            || IsInside(canonicalPath, NooaPaths.Canonicalize(NooaPaths.GetProjectDir()))
+            || IsInside(canonicalPath, NooaPaths.Canonicalize(NooaPaths.FindProjectRoot()));
+    }
+
+    private static bool IsInside(string path, string directory) =>
+        path.StartsWith(directory.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.Ordinal);
 
     /// <summary>
     /// Saves one credential atomically with owner-only permissions.

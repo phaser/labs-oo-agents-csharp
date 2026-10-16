@@ -119,6 +119,25 @@ public static class LayeredConfig
         ILogger? logger = null)
     {
         var merged = new Dictionary<string, object?>();
+        foreach (var (_, mapping) in LoadLayers(filename, envVar, prepend, projectDir, logger))
+        {
+            DeepMerge(merged, mapping);
+        }
+
+        return merged;
+    }
+
+    /// <summary>
+    /// Loads each layer of <paramref name="filename"/> separately, lowest priority first, so a caller can apply a trust rule per layer.
+    /// A layer that cannot be loaded is skipped with a warning, as in <see cref="LoadLayeredYaml"/>.
+    /// </summary>
+    internal static IEnumerable<(string Path, Dictionary<string, object?> Data)> LoadLayers(
+        string filename,
+        string? envVar = null,
+        IEnumerable<string>? prepend = null,
+        string? projectDir = null,
+        ILogger? logger = null)
+    {
         foreach (var path in LayeredPaths(filename, envVar, prepend, projectDir, logger))
         {
             object? data;
@@ -150,10 +169,8 @@ public static class LayeredConfig
                 continue;
             }
 
-            DeepMerge(merged, mapping);
+            yield return (path, mapping);
         }
-
-        return merged;
     }
 
     /// <summary>

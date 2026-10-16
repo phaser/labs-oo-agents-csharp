@@ -347,4 +347,156 @@ public sealed class SecretsTests : IDisposable
 
         Assert.Empty(Secrets.LoadSecretsIntoEnv());
     }
+
+    // ── Layer-aware trust ──
+
+    [Fact]
+    public void LoadSecretsIntoEnv_ProjectLayerNonCredentialName_IsRefused()
+    {
+        var logger = new CapturingLogger();
+        WriteProject("env:\n  MY_SETTING: PRIVATE-VALUE\n  MY_API_KEY: PRIVATE-KEY\n");
+        Environment.SetEnvironmentVariable("MY_SETTING", null);
+        Environment.SetEnvironmentVariable("MY_API_KEY", null);
+        try
+        {
+            var applied = Secrets.LoadSecretsIntoEnv(logger);
+
+            Assert.Equal(["MY_API_KEY"], applied);
+            Assert.Null(Environment.GetEnvironmentVariable("MY_SETTING"));
+            Assert.Contains("MY_SETTING", logger.Text);
+            Assert.Contains("project-layer", logger.Text);
+            Assert.DoesNotContain("PRIVATE", logger.Text);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("MY_API_KEY", null);
+        }
+    }
+
+    [Theory]
+    [InlineData("OPENAI_API_KEY")]
+    [InlineData("SERVICE_KEY")]
+    [InlineData("gh_token")]
+    [InlineData("APP_SECRET")]
+    [InlineData("DB_PASSWORD")]
+    public void LoadSecretsIntoEnv_ProjectLayerCredentialName_IsAccepted(string name)
+    {
+        Environment.SetEnvironmentVariable(name, null);
+        WriteProject($"env:\n  {name}: v\n");
+        try
+        {
+            Assert.Equal([name], Secrets.LoadSecretsIntoEnv());
+            Assert.Equal("v", Environment.GetEnvironmentVariable(name));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(name, null);
+        }
+    }
+
+    [Fact]
+    public void LoadSecretsIntoEnv_UserLayerNonCredentialName_IsAccepted()
+    {
+        Environment.SetEnvironmentVariable("MY_SETTING", null);
+        WriteUser("env:\n  MY_SETTING: v\n");
+        try
+        {
+            Assert.Equal(["MY_SETTING"], Secrets.LoadSecretsIntoEnv());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("MY_SETTING", null);
+        }
+    }
+
+    [Fact]
+    public void LoadSecretsIntoEnv_EnvVarFileInsideProjectDir_IsUntrusted()
+    {
+        var inside = Path.Combine(_dirs.ProjectDir, "extra.yaml");
+        TempConfigDirs.Write(inside, "env:\n  MY_SETTING: v\n");
+        Environment.SetEnvironmentVariable(Secrets.EnvVar, inside);
+        Environment.SetEnvironmentVariable("MY_SETTING", null);
+
+        Assert.Empty(Secrets.LoadSecretsIntoEnv());
+    }
+
+    [Fact]
+    public void LoadSecretsIntoEnv_EnvVarFileOutsideProject_IsTrusted()
+    {
+        var outside = Path.Combine(_dirs.Root, "outside.yaml");
+        TempConfigDirs.Write(outside, "env:\n  MY_SETTING: v\n");
+        Environment.SetEnvironmentVariable(Secrets.EnvVar, outside);
+        Environment.SetEnvironmentVariable("MY_SETTING", null);
+        try
+        {
+            Assert.Equal(["MY_SETTING"], Secrets.LoadSecretsIntoEnv());
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("MY_SETTING", null);
+        }
+    }
+
+    [Theory]
+    [InlineData("NEMO_OO_USER_DIR")]
+    [InlineData("NOOA_X_TOKEN")]
+    [InlineData("XDG_CONFIG_HOME")]
+    [InlineData("GIT_SSH_COMMAND")]
+    [InlineData("SSH_AUTH_SOCK")]
+    [InlineData("NPM_CONFIG_REGISTRY")]
+    [InlineData("PIP_INDEX_URL")]
+    [InlineData("EDITOR")]
+    [InlineData("ZDOTDIR")]
+    [InlineData("NODE_PATH")]
+    [InlineData("SERVICE_HOST")]
+    [InlineData("SERVICE_URL")]
+    [InlineData("LD_PRELOAD")]
+    public void LoadSecretsIntoEnv_DeniedName_IsRefusedInEveryLayer(string name)
+    {
+        var original = Environment.GetEnvironmentVariable(name);
+        Environment.SetEnvironmentVariable(name, null);
+        try
+        {
+            WriteUser($"env:\n  {name}: v\n");
+            WriteProject($"env:\n  {name}: v\n");
+            var outside = Path.Combine(_dirs.Root, "outside.yaml");
+            TempConfigDirs.Write(outside, $"env:\n  {name}: v\n");
+            Environment.SetEnvironmentVariable(Secrets.EnvVar, outside);
+
+            Assert.Empty(Secrets.LoadSecretsIntoEnv());
+            Assert.Null(Environment.GetEnvironmentVariable(name));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(name, original);
+        }
+    }
+
+    [Fact]
+    public void LoadSecretsIntoEnv_ProjectLayerKey_NeverOverridesExistingEnv()
+    {
+        Environment.SetEnvironmentVariable(_key, "from-shell");
+        WriteProject($"env:\n  {_key}: from-project\n");
+
+        Assert.Empty(Secrets.LoadSecretsIntoEnv());
+        Assert.Equal("from-shell", Environment.GetEnvironmentVariable(_key));
+    }
+
+    [Fact]
+    public void LoadSecretsIntoEnv_RefusedProjectNameDoesNotOverrideUserValue()
+    {
+        Environment.SetEnvironmentVariable("MY_SETTING", null);
+        WriteUser("env:\n  MY_SETTING: trusted\n");
+        WriteProject("env:\n  MY_SETTING: attacker\n");
+        try
+        {
+            Secrets.LoadSecretsIntoEnv();
+
+            Assert.Equal("trusted", Environment.GetEnvironmentVariable("MY_SETTING"));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("MY_SETTING", null);
+        }
+    }
 }
