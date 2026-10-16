@@ -41,4 +41,5 @@ Upstream CI: `.github/workflows/ci.yml`.
 - xunit.v3 4.x needs Microsoft.Testing.Platform on the .NET 10 SDK. `global.json` opts in; `Microsoft.NET.Test.Sdk` and `xunit.runner.visualstudio` are not needed.
 - CI passes `--ignore-exit-code 8` (zero tests ran) until T03 adds tests.
 - Pinned packages (all GO-tier licenses, all ≥14 days old): xunit.v3 4.0.1 (Apache-2.0), Microsoft.CodeAnalysis.CSharp 5.3.0 (MIT), Microsoft.CodeAnalysis.Analyzers 5.3.0 (MIT). The SDK compiler is Roslyn 5.6, so the generator's Roslyn 5.3 is compatible.
+- CI runs `ubuntu-latest` on PRs and `ubuntu-latest` + `macos-latest` on pushes to `main` (macOS minutes cost 10x on a private repo).
 - Actions pinned by SHA: actions/checkout v7.0.1, actions/setup-dotnet v6.0.0.
