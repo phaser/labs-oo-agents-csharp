@@ -12,6 +12,10 @@ namespace Nooa.Agentdoc;
 internal sealed class DocFormatter(IAgentDocProvider provider, bool concise)
 {
     private const string _indent = "    ";
+    private const int _fieldMaxLength = 3;
+    private const int _defaultMaxLength = 5;
+    private const int _valueMaxString = 50;
+    private const int _valueMaxDepth = 1;
 
     private readonly NullabilityInfoContext _nullability = new();
 
@@ -93,10 +97,10 @@ internal sealed class DocFormatter(IAgentDocProvider provider, bool concise)
         }
 
         object? current = null;
-        var hasValue = instance is not null && TryReadValue(member, instance, out current);
+        var hasValue = instance is not null && MemberReader.TryReadValue(member, instance, out current);
         if (hasValue)
         {
-            text += " = " + ValuePreview.Format(current);
+            text += " = " + PFormat.Format(current, maxLength: _fieldMaxLength, maxString: _valueMaxString, maxDepth: _valueMaxDepth);
         }
 
         if (hasValue || member is FieldInfo)
@@ -129,28 +133,6 @@ internal sealed class DocFormatter(IAgentDocProvider provider, bool concise)
         }
 
         return string.Join(" ", parts);
-    }
-
-    /// <summary>Reads fields and auto-properties. Computed properties are not evaluated: a getter can have side effects.</summary>
-    private static bool TryReadValue(MemberInfo member, object instance, out object? value)
-    {
-        value = null;
-        if (member is FieldInfo field)
-        {
-            value = field.GetValue(instance);
-            return true;
-        }
-
-        var property = (PropertyInfo)member;
-        var isAuto = property.GetMethod is not null
-            && property.DeclaringType!.GetField($"<{property.Name}>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic) is not null;
-        if (!isAuto || property.GetMethod?.IsPublic != true)
-        {
-            return false;
-        }
-
-        value = property.GetValue(instance);
-        return true;
     }
 
     private void AppendMethod(List<string> lines, string indent, MethodInfo method, bool qualified)
@@ -193,7 +175,7 @@ internal sealed class DocFormatter(IAgentDocProvider provider, bool concise)
             else
             {
                 var type = Nullable.GetUnderlyingType(p.ParameterType) ?? p.ParameterType;
-                text += " = " + ValuePreview.Format(value is not null && type.IsEnum ? Enum.ToObject(type, value) : value);
+                text += " = " + PFormat.Format(value is not null && type.IsEnum ? Enum.ToObject(type, value) : value, maxLength: _defaultMaxLength, maxString: _valueMaxString, maxDepth: _valueMaxDepth);
             }
         }
 

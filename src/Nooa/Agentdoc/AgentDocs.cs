@@ -12,6 +12,9 @@ namespace Nooa.Agentdoc;
 /// </summary>
 public static class AgentDocs
 {
+    /// <summary>Depth limit for a non-custom value that <c>Doc</c> prints (upstream passes 3).</summary>
+    private const int _instanceMaxDepth = 3;
+
     /// <summary>Documents one object: a <see cref="Type"/>, a <see cref="MethodInfo"/> or an instance.</summary>
     /// <param name="obj">A type shows its declared API. An instance shows the same API with current values.</param>
     /// <param name="concise">Show only the first line of each doc comment.</param>
@@ -68,7 +71,7 @@ public static class AgentDocs
                     }
                     else
                     {
-                        sections.Add(ValuePreview.Format(obj));
+                        sections.Add(PFormat.Format(obj, maxDepth: _instanceMaxDepth));
                     }
 
                     break;

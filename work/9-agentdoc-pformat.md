@@ -1,9 +1,9 @@
 ---
-pr:
-pr_url:
+pr: 9
+pr_url: https://github.com/phaser/labs-oo-agents-csharp/pull/9
 jira:
 epic: M1
-status: todo
+status: merged
 created: 2026-10-16
 updated: 2026-10-16
 tags: []
@@ -25,11 +25,11 @@ Upstream (pin in the plan):
 
 ## Progress
 
-- [ ] Define the C# repr format for primitives, records, collections, dictionaries, enums, null
-- [ ] Port depth / width / item-count truncation rules
-- [ ] Handle cycles (reference tracking)
-- [ ] Port `TruncatingStringIO` equivalent (`TruncatingTextWriter`)
-- [ ] Port tests from `tests/agentdoc/` that cover `pformat`
+- [x] Define the C# repr format for primitives, records, collections, dictionaries, enums, null
+- [x] Port depth / width / item-count truncation rules
+- [x] Handle cycles (reference tracking)
+- [x] Port `TruncatingStringIO` equivalent (`TruncatingTextWriter`)
+- [x] Port tests from `tests/agentdoc/` that cover `pformat`
 
 ## Notes
 
@@ -43,3 +43,9 @@ Largest single file upstream (2,085 lines). Split the PR if it grows past ~1.5k 
   - `doc()` parts that need the printer: the value-rendering cases of `test_core` (`pformat` calls) and `test_contracts`.
   - Python only, probably not applicable (confirm in T06 and record in porting-notes): `test_annotated_types`, `test_dataclass_properties`, `test_discover_pep563`, `test_discover_pydantic_forward_refs`, `test_namedtuple_future_annotations`, `test_typeddict_future_annotations`, `test_pandas_adapter`, `test_protocols`, `test_registry`, `test_metadata`, `test_docs` (`spec()`), `test_doc_config`, `test_visibility` (module variables, `hidden` blocks), `test_skill_lifecycle_visibility`, `test_referenced_types_demo`.
 
+### T06 result
+
+- Format, markers, safety rules and deviations: `docs/porting-notes.md`, section "`PFormat` value printer".
+- `ValuePreview` is gone. `DocFormatter` and `AgentDocs` call `PFormat.Format` with the upstream limits. `MemberReader.TryReadValue` (moved from `DocFormatter`) now reads the backing field, not the getter.
+- Moved: per-field `max_string` override and `test_event_max_string_override` go to T13. The REPL `pprint` global goes to T15.
+- Non-test code is about 1,100 lines, so there is no split.

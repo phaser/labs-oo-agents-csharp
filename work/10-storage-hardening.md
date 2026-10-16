@@ -3,7 +3,7 @@ pr: 10
 pr_url: https://github.com/phaser/labs-oo-agents-csharp/pull/10
 jira:
 epic: M1
-status: open
+status: merged
 created: 2026-10-16
 updated: 2026-10-16
 tags: [security]
