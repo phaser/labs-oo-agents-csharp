@@ -18,13 +18,14 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 | [T04 Event IR and LlmResponse](6-event-ir.md) | [#6](https://github.com/phaser/labs-oo-agents-csharp/pull/6) | — | merged | 2026-10-16 |
 | [T05 Agentdoc renderer: Doc()](5-agentdoc-renderer.md) | [#5](https://github.com/phaser/labs-oo-agents-csharp/pull/5) | — | merged | 2026-10-16 |
 | [T06 Agentdoc PFormat() and truncation](t06-agentdoc-pformat.md) | — | — | todo | 2026-10-16 |
-| [T07 Storage: in-memory and SQLite](8-storage.md) | [#8](https://github.com/phaser/labs-oo-agents-csharp/pull/8) | — | open | 2026-10-16 |
+| [T07 Storage: in-memory and SQLite](8-storage.md) | [#8](https://github.com/phaser/labs-oo-agents-csharp/pull/8) | — | merged | 2026-10-16 |
+| [T07b Storage hardening follow-up](10-storage-hardening.md) | [#10](https://github.com/phaser/labs-oo-agents-csharp/pull/10) | — | open | 2026-10-16 |
 
 ## M2 — LLM layer
 
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
-| [T08 ILlmClient and FakeLlmClient](7-llm-client-fake.md) | [#7](https://github.com/phaser/labs-oo-agents-csharp/pull/7) | — | open | 2026-10-16 |
+| [T08 ILlmClient and FakeLlmClient](7-llm-client-fake.md) | [#7](https://github.com/phaser/labs-oo-agents-csharp/pull/7) | — | merged | 2026-10-16 |
 | [T09 IChatClient adapter, tools, structured output, retry](t09-chatclient-adapter.md) | — | — | todo | 2026-10-16 |
 | [T10 Model registry and reasoning levels](t10-model-registry.md) | — | — | todo | 2026-10-16 |
 

@@ -30,6 +30,7 @@ internal sealed class SessionLock : IDisposable
     /// <summary>Takes the lock and writes the owner record. Throws <see cref="SessionAlreadyActiveException"/> if it is held.</summary>
     public static SessionLock Acquire(string lockPath)
     {
+        RefuseSharedDirectory(lockPath);
         RefuseLink(lockPath);
         RefuseLink(lockPath + ".guard");
         FileStream guard;
@@ -114,6 +115,24 @@ internal sealed class SessionLock : IDisposable
         RefuseLink(path);
         using var stream = new FileStream(path, Options(FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
         stream.Write(record);
+    }
+
+    // The link check and the open are not atomic, and .NET has no O_NOFOLLOW open. Another user can only win that race
+    // by creating a link in the lock directory, so the directory must not be writable by group or others.
+    private static void RefuseSharedDirectory(string lockPath)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var directory = Path.GetDirectoryName(Path.GetFullPath(lockPath))!;
+        var mode = File.GetUnixFileMode(directory);
+        if ((mode & (UnixFileMode.GroupWrite | UnixFileMode.OtherWrite)) != 0)
+        {
+            throw new UnauthorizedAccessException(
+                $"The session lock directory '{directory}' is writable by group or others. Use a directory that only the current user can write.");
+        }
     }
 
     private static void RefuseLink(string path)
