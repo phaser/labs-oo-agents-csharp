@@ -56,7 +56,6 @@
 - Private `const` fields need a `_` prefix too (also for a default parameter value).
 - Hostile SQLite file: `PRAGMA trusted_schema=OFF`, `SQLitePCL.raw.sqlite3_db_config(conn.Handle, 1010, 1, out _)` (DEFENSIVE), then compare `sqlite_master` with a reference in-memory database built from the same DDL. Stored SQL text drops `IF NOT EXISTS`.
 - Keyset paging with a row value works in SQLite: `WHERE (insertion_order, rowid) > (@o, @r) ORDER BY insertion_order, rowid LIMIT n`. Stop reading a `SqliteDataReader` early to bound the page memory.
-||||||| parent of 64237cf (Add PFormat value printer and truncating writers (T06))
 
 ## Value printing (T06)
 
