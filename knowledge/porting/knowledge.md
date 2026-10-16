@@ -81,3 +81,13 @@
 - `FileStreamOptions { Mode = CreateNew, UnixCreateMode = ... }` gives the `mkstemp` behavior (new file, mode 0600). Guard `UnixCreateMode` with `!OperatingSystem.IsWindows()`.
 - Bash heredoc without quotes expands `$` and `\`. Quote the delimiter (`<<'EOF'`) when the text is C# source.
 
+## Microsoft.Extensions.AI and OpenAI (T09)
+
+- Pin `Microsoft.Extensions.AI.Abstractions` and `.OpenAI` to the same version. The OpenAI package pulls `OpenAI`, `System.ClientModel` and the `Microsoft.Extensions.*.Abstractions` packages. `Microsoft.Extensions.Logging.Abstractions` stays at its own pin without a downgrade error.
+- Both `Microsoft.Extensions.AI` and `OpenAI.Chat` define `ChatMessage` and `ChatFinishReason`. Do not import `OpenAI.Chat`; use an alias such as `using ChatToolCall = OpenAI.Chat.ChatToolCall;`.
+- Strict mode key in M.E.AI.OpenAI 10.x is `AdditionalProperties["strict"]`, on an `AIFunctionDeclaration` and on `ChatOptions`. `strictJsonSchema` is ignored without any error. Check the request body in a test.
+- Test the real OpenAI adapter without a network: `new OpenAIClientOptions { Transport = new HttpClientPipelineTransport(new HttpClient(stubHandler)), RetryPolicy = new ClientRetryPolicy(0) }`, then `GetChatClient(model).AsIChatClient()`.
+- `AIJsonUtilities.CreateJsonSchema(typeof(object))` is the boolean `true`, not an object. A recursive type uses `{"$ref":"#/properties/x"}`, with no `$defs`.
+- `AIFunctionDeclaration` can be subclassed (`Name`, `Description`, `JsonSchema`, `AdditionalProperties`) to carry a ready JSON schema.
+- xUnit v3 analyzer xUnit1051: pass `TestContext.Current.CancellationToken` to every method with a token. `Assert.Skip(reason)` skips a test at run time (use it for `Live` tests without environment variables).
+- Model output is untrusted input for `Regex`: use a `matchTimeoutMilliseconds` argument on `[GeneratedRegex]` and treat a `RegexMatchTimeoutException` as a parse failure.
