@@ -3,7 +3,7 @@ pr:
 pr_url:
 jira:
 epic: M3
-status: todo
+status: open
 created: 2026-10-16
 updated: 2026-10-16
 tags: []
@@ -31,13 +31,13 @@ Upstream (pin in the plan):
 
 ## Progress
 
-- [ ] Port `Agent` init: id, storage, `EventManager`, `ContextManager` with protected blocks `system_prompt`, `self`, `state`
-- [ ] LLM resolution cascade: call → method → instance → class → parent agent (`AsyncLocal`)
-- [ ] Generation lock (D10) and nesting depth check
-- [ ] Method wrapper: argument validation, `BeforeAgentCall` / `AfterAgentCall`, middleware hooks, strategy dispatch
-- [ ] `EventManager`: add / filter / update / collapse / subscribe / intercept
-- [ ] Strategy precedence: call → `[Strategy]` → default
-- [ ] Port tests: `tests/core_runtime/`, `tests/edge_cases/`, `test_method_call_permutations.py`, `test_agent_llm_accessor.py`, event-manager tests
+- [x] Port `Agent` init: id, storage, `EventManager`, `ContextManager` with protected blocks `system_prompt`, `self`, `state`
+- [x] LLM resolution cascade: call → method → instance → class → parent agent (`AsyncLocal`)
+- [x] Generation lock (D10) and nesting depth check
+- [x] Method wrapper: argument validation, `BeforeAgentCall` / `AfterAgentCall`, middleware hooks, strategy dispatch
+- [x] `EventManager`: add / filter / update / collapse / subscribe / intercept
+- [x] Strategy precedence: call → `[Strategy]` → default
+- [x] Port tests: `tests/core_runtime/`, `tests/edge_cases/`, `test_method_call_permutations.py`, `test_agent_llm_accessor.py`, event-manager tests
 
 ## Notes
 
@@ -58,3 +58,16 @@ From T07 (storage): `IStorageManager` has the blob API only (`SaveSnapshotJson`,
 - Doc text: the generated `IAgentDocProvider` is registered by a module initializer. Its text keeps `{Member.Path}` placeholders as written. Use `AgentMetadata.SystemPrompt` for the rendered prompt.
 - Method prompts are already expanded in `CurrentCall.Docstring`. Parameter docs reach the model only through `AgentDocs`.
 - `[NoSnapshot]` and `[NoTrace]` exist without behaviour. The wrapper reads them.
+
+### Decisions and deviations (T12)
+
+Details are in `docs/porting-notes.md`, section "Agent, runtime, event manager, snapshots (T12)".
+
+- Seam: `src/Nooa/Llm/ILlmClientResolver.cs` is a byte-identical copy of the lead's file (T10 adds the same file and implements it). `Agent.DefaultLlmResolver` is the process-wide resolver. `AgentOptions.LlmResolver` beats it.
+- Call-level LLM and strategy: `Agent.UseLlm(...)` and `Agent.UseStrategy(...)` return a scope (`IDisposable`, `AsyncLocal`). Method-level LLM: `[AgentOptions(Llm = ...)]` on the method (the attribute now allows methods). `[NoSnapshot]` now allows fields and properties.
+- No default strategy until T14/T17: `AgentOptions.DefaultStrategy` or `[Strategy]` is needed.
+- `GenerationStrategy` is an abstract class (`Name`, `Traceable`, `RequiresLock`, `ExecuteAsync`). `IRuntimeServices` has `GenerateAsync` over ready messages. T13 adds message building, T17 `execute_code`.
+- Middleware is typed by context (`Intercept<TContext>`). Four contexts exist. The decision and execute-code contexts are minimal.
+- Not ported: `decision_model` (B03), `render_config`, `context={}`, `event_query` (T13), hook composition (T19), `SnapshotVars`, `PersistentVars`, pydantic envelopes.
+- Size: about 1.8k lines of non-test code without comments and blank lines (2.8k with doc comments). One PR.
+- Existing tests changed: `AgentOptionsAttributeTests` and `NoSnapshotAttributeTests` (new attribute targets).

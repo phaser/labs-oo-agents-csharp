@@ -13,8 +13,8 @@ public class AgentOptionsAttributeTests
     }
 
     [Fact]
-    public void Usage_TargetsClassesOnly()
+    public void Usage_TargetsClassesAndMethods()
     {
-        Assert.Equal(AttributeTargets.Class, AgenticAttributeTests.AttributeUsageOf(typeof(AgentOptionsAttribute)).ValidOn);
+        Assert.Equal(AttributeTargets.Class | AttributeTargets.Method, AgenticAttributeTests.AttributeUsageOf(typeof(AgentOptionsAttribute)).ValidOn);
     }
 }
