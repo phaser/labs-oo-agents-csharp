@@ -11,14 +11,15 @@ namespace Nooa.Tests.Llm;
 public class EmptyContentExceptionTests
 {
     [Fact]
-    public void Constructor_WithReasoning_KeepsAndShortensItInTheMessage()
+    public void Constructor_WithReasoning_KeepsItOutOfTheMessage()
     {
         var reasoning = new string('x', 150);
 
         var error = new EmptyContentException(reasoning);
 
         Assert.Equal(reasoning, error.Reasoning);
-        Assert.Equal($"Empty content with reasoning: {new string('x', 100)}...", error.Message);
+        Assert.Equal("Empty content with reasoning", error.Message);
+        Assert.DoesNotContain("xxx", error.Message);
         Assert.IsAssignableFrom<NooaException>(error);
     }
 

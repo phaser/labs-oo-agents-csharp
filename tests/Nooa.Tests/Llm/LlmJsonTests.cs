@@ -43,13 +43,13 @@ public class LlmJsonTests
     }
 
     [Fact]
-    public void ExtractAndParse_OnlyBashFence_ThrowsWithPreview()
+    public void ExtractAndParse_OnlyBashFence_ThrowsWithoutTheText()
     {
         const string text = "```bash\nuv run python scripts/run_local.py\n```";
 
         var error = Assert.Throws<JsonException>(() => LlmJson.ExtractAndParse(text));
 
-        Assert.Contains("uv run python scripts/run_local.py", error.Message);
+        Assert.DoesNotContain("uv run", error.Message);
     }
 
     [Theory]
@@ -59,6 +59,17 @@ public class LlmJsonTests
     public void ExtractAndParse_NoJson_Throws(string text)
     {
         Assert.Throws<JsonException>(() => LlmJson.ExtractAndParse(text));
+    }
+
+    [Theory]
+    [InlineData("secret-model-text is not json")]
+    [InlineData("   ")]
+    [InlineData("{\"secret\": [...]}")]
+    public void ExtractAndParse_Failure_MessageNeverContainsTheText(string text)
+    {
+        var error = Assert.Throws<JsonException>(() => LlmJson.ExtractAndParse(text));
+
+        Assert.DoesNotContain("secret", error.Message);
     }
 
     [Fact]

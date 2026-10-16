@@ -12,7 +12,6 @@ namespace Nooa.Llm;
 /// <summary>Tolerant JSON extraction from model text.</summary>
 public static partial class LlmJson
 {
-    private const int _previewLength = 500;
     private const int _regexTimeoutMs = 1000;
 
     /// <summary>
@@ -20,7 +19,7 @@ public static partial class LlmJson
     /// extracts an object that is embedded in prose, removes control characters, repairs bad escapes, and
     /// decodes nested JSON that a model encoded as a string.
     /// </summary>
-    /// <exception cref="JsonException">The text holds no parseable JSON.</exception>
+    /// <exception cref="JsonException">The text holds no parseable JSON. The message never contains the text.</exception>
     public static JsonNode? ExtractAndParse(string text)
     {
         ArgumentNullException.ThrowIfNull(text);
@@ -37,7 +36,6 @@ public static partial class LlmJson
 
     private static JsonNode? ExtractAndParseCore(string text)
     {
-        var original = text;
         text = text.Trim();
 
         var fence = FencePattern().Match(text);
@@ -51,7 +49,7 @@ public static partial class LlmJson
 
         if (text.Length == 0)
         {
-            throw new JsonException($"Empty text after processing. Original: `{Truncate(original, 200)}` ...");
+            throw new JsonException("The text is empty after cleanup");
         }
 
         if (TryParse(text, out var parsed, out var firstError))
@@ -84,9 +82,7 @@ public static partial class LlmJson
             return DecodeNested(parsed);
         }
 
-        throw new JsonException(
-            $"Failed to parse JSON after multiple cleanup attempts. Text preview: {Truncate(text, _previewLength)}",
-            innerException: lastError);
+        throw new JsonException("The text is not valid JSON after cleanup", innerException: lastError);
     }
 
     [GeneratedRegex(@"^```(?:json)?[ \t]*\r?\n(.*?)\r?\n?```$", RegexOptions.Singleline, _regexTimeoutMs)]
@@ -106,8 +102,6 @@ public static partial class LlmJson
 
     [GeneratedRegex(@"\\(?![""\\/bfnrt]|u[0-9a-fA-F]{4})", RegexOptions.None, _regexTimeoutMs)]
     private static partial Regex BadEscape();
-
-    private static string Truncate(string value, int length) => value.Length > length ? value[..length] : value;
 
     private static bool TryParse(string text, out JsonNode? node, out JsonException? error)
     {

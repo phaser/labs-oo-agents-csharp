@@ -11,11 +11,9 @@ namespace Nooa.Llm;
 public sealed class EmptyContentException : NooaException
 {
     /// <summary>Creates the exception.</summary>
-    /// <param name="reasoning">The reasoning that the model returned, if any.</param>
+    /// <param name="reasoning">The reasoning that the model returned, if any. It is not put in the message.</param>
     public EmptyContentException(string? reasoning = null)
-        : base(reasoning is { Length: > 0 }
-            ? $"Empty content with reasoning: {(reasoning.Length > 100 ? reasoning[..100] : reasoning)}..."
-            : "Empty content")
+        : base(reasoning is { Length: > 0 } ? "Empty content with reasoning" : "Empty content")
     {
         Reasoning = reasoning;
     }

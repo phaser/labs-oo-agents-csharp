@@ -419,7 +419,21 @@ public class ChatClientLlmClientTests
 
         Assert.Equal(text, error.Content);
         Assert.Contains("Sentiment", error.Message);
+        Assert.DoesNotContain("not json at all", error.Message);
+        Assert.DoesNotContain("\"x\"", error.Message);
         Assert.NotNull(error.InnerException);
+    }
+
+    [Fact]
+    public async Task CallAsync_StructuredOutputTypeMismatch_ReportsThePathNotTheValue()
+    {
+        var chat = new ScriptedChatClient().Reply("{\"label\": \"ok\", \"score\": \"secret-value\"}");
+
+        var error = await Assert.ThrowsAsync<StructuredOutputException>(() => Call(Client(chat), outputType: typeof(Sentiment)));
+
+        Assert.Equal("$.score", error.Path);
+        Assert.DoesNotContain("secret-value", error.Message);
+        Assert.DoesNotContain("secret-value", error.Detail);
     }
 
     [Fact]

@@ -239,30 +239,43 @@ public sealed partial class ChatClientLlmClient : ILlmClient
     {
         // As upstream, reasoning stands in when a reasoning model puts the answer there.
         var text = response.Content.Length > 0 ? response.Content : response.Reasoning ?? "";
+        JsonNode? node;
         try
         {
-            var node = LlmJson.ExtractAndParse(text);
-            if (wrapped)
-            {
-                node = node is JsonObject obj && obj.TryGetPropertyValue(_wrapperProperty, out var inner)
-                    ? inner
-                    : throw new JsonException($"The JSON object has no \"{_wrapperProperty}\" property");
-            }
-
-            return node.Deserialize(outputType, NooaJson.Options)
-                ?? throw new JsonException($"The JSON value is null, which {outputType.Name} does not accept");
+            node = LlmJson.ExtractAndParse(text);
         }
         catch (JsonException e)
         {
+            // The messages of LlmJson hold no model text, so Detail may repeat them.
+            throw new StructuredOutputException(outputType, e.Message, text, Location(e), e);
+        }
+
+        if (wrapped)
+        {
+            node = node is JsonObject obj && obj.TryGetPropertyValue(_wrapperProperty, out var inner)
+                ? inner
+                : throw new StructuredOutputException(
+                    outputType, $"the JSON object has no \"{_wrapperProperty}\" property", text, "$");
+        }
+
+        try
+        {
+            return node.Deserialize(outputType, NooaJson.Options)
+                ?? throw new StructuredOutputException(outputType, "the JSON value is null", text, "$");
+        }
+        catch (JsonException e)
+        {
+            // The message of System.Text.Json names the expected type and the path, not the value.
             throw new StructuredOutputException(
-                $"The output is not valid {outputType.Name}: {e.Message}", outputType, text, e);
+                outputType, $"a value does not match the type at {e.Path ?? "$"}", text, e.Path, e);
         }
         catch (NotSupportedException e)
         {
-            throw new StructuredOutputException(
-                $"The output cannot be converted to {outputType.Name}: {e.Message}", outputType, text, e);
+            throw new StructuredOutputException(outputType, "the type cannot be read from JSON", text, null, e);
         }
     }
+
+    private static string? Location(JsonException e) => e.InnerException is JsonException inner ? inner.Path : e.Path;
 
     private sealed class ToolDeclaration : AIFunctionDeclaration
     {
