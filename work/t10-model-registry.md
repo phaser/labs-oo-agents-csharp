@@ -30,6 +30,7 @@ Upstream (pin in the plan):
 - [ ] Port reasoning levels map
 - [ ] Port `ContextLimits`
 - [ ] Port quickstart default LLM setup (env / dotenv)
+- [ ] Port `ModelConfig`, `ResolvedConfig`, `get_model_config` (`config/model_config.py`, `config/resolved.py`), moved from T03; port `tests/config/test_resolved_config.py`
 - [ ] Port tests: `test_model_registry`, `test_llm_config_chain.py`
 
 ## Notes

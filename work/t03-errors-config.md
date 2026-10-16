@@ -3,7 +3,7 @@ pr:
 pr_url:
 jira:
 epic: M1
-status: todo
+status: open
 created: 2026-10-16
 updated: 2026-10-16
 tags: []
@@ -28,14 +28,30 @@ Upstream (pin in the plan):
 
 ## Progress
 
-- [ ] Remove `--ignore-exit-code 8` from `.github/workflows/ci.yml` (added in T02 while no tests exist)
-- [ ] Port `NemoOOAgentsError` hierarchy to `Nooa.Errors`
-- [ ] Port `errors/formatting.py` (error text with cell line numbers)
-- [ ] Port `ExecutionConfig`, `TruncationConfig` (merge rules), `CodeActConfig`, `PredictConfig` as records
-- [ ] Port layered YAML config (bundled → user → project → env) with YamlDotNet
-- [ ] Port `secrets.yaml` loading (never override existing env vars)
-- [ ] Port tests: `tests/config/`, `test_layered_config.py`, `test_secrets.py`, `test_error_formatting.py`, `test_error_line_numbers.py`
+- [x] Remove `--ignore-exit-code 8` from `.github/workflows/ci.yml`: moved to T11 (`tests/Nooa.Generators.Tests` still has no tests, so the flag is still needed)
+- [x] Port `NemoOOAgentsError` hierarchy to `Nooa.Errors` (as `NooaException`)
+- [x] Port `errors/formatting.py`: moved to T15 (Python-traceback specific)
+- [x] Port `ExecutionConfig`, `TruncationConfig` (merge rules), `CodeActConfig` (scalars), `LoopGuardConfig`, `PredictConfig` as records; deferred fields listed in porting-notes
+- [x] Port layered YAML config (bundled -> user -> project -> env) with YamlDotNet
+- [x] Port `secrets.yaml` loading (never override existing env vars) and `WriteSecretEnv`
+- [x] Port tests: `tests/config/` (applicable), `test_layered_config.py`, `test_secrets.py`, truncation config tests; `test_error_formatting.py` and `test_error_line_numbers.py` moved to T15
 
 ## Notes
 
-Secrets never go to logs or traces.
+Secrets never go to logs or traces. Tests assert that log text and exception messages hold no secret value.
+
+Decisions (details in `docs/porting-notes.md`):
+- `ConfigBase` record: explicit-field tracking with C# 14 `field` keyword, `MergeWith`, explicit `Validate()`.
+- Exceptions: `*Exception` names, root `NooaException`.
+- `LlmConfig.Chain` takes bundled paths as a parameter (no entry points, D14).
+- Project root = nearest ancestor with `.nooa` or `.git` (upstream: `pyproject.toml`).
+- Warnings go to an optional `ILogger`.
+
+Packages:
+
+| Package | Version | Published | License |
+|---------|---------|-----------|---------|
+| YamlDotNet | 18.1.0 | 2026-06-26 | MIT |
+| Microsoft.Extensions.Logging.Abstractions | 10.0.12 | 2026-09-08 | MIT |
+
+Deferred and moved: `ModelConfig`/`ResolvedConfig` to T10; `errors/formatting.py` to T15; `CodeActConfig` restrictions/sandbox/prefill/conditions to T17; `PredictConfig` conditions to T14; `--ignore-exit-code 8` removal to T11; `ReflexionConfig` and summarizer configs stay in the backlog (B10, B04).

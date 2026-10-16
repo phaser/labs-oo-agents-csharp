@@ -34,6 +34,7 @@ Upstream (pin in the plan):
 - [ ] Per-cell timeout with cooperative cancellation; record partial output on cancel
 - [ ] Strip markdown fences; map compile diagnostics to `Cell In[N]` line numbers
 - [ ] Measure memory per cell over 500 cells; record the result in knowledge/
+- [ ] Port `errors/formatting.py` intent: LLM-facing diagnostics for C# compile/runtime errors with `Cell In[N]` line numbers, bounded size (moved from T03; ports the intent of `test_error_formatting.py` and `test_error_line_numbers.py`)
 - [ ] Port the applicable executor and stream tests from `tests/runtime/`
 
 ## Notes

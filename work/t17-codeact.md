@@ -38,3 +38,5 @@ Upstream (pin in the plan):
 ## Notes
 
 Exit check for M4.
+
+Deferred `CodeActConfig` fields from T03 (add them with the types they use): `Restrictions` (T16), `Prefill` (this task), `Preconditions` and `Postconditions` (this task), `Sandbox` and `ExecutionBackend` (B01). Merge them as explicit-field properties (see `ConfigBase`).
