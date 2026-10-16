@@ -39,3 +39,13 @@ Upstream (pin in the plan):
 ## Notes
 
 Pre-ellipsis code is not supported (see porting-notes).
+
+### From T05 (contract the generator must meet)
+
+- `[Hidden]` already exists: `Nooa.HiddenAttribute` (`src/Nooa/HiddenAttribute.cs`, targets: field, property, method). Reuse it in the attribute checklist item. Widen `AttributeUsage` here if the generator needs more targets.
+- Doc text seam: emit an implementation of `Nooa.Agentdoc.IAgentDocProvider` and register it with `AgentDocProviders.Register` (module initializer). `AgentDocs.Doc` asks registered providers first, then falls back to `[Description]`.
+  - `GetSummary(MemberInfo)` returns the `<summary>` text (plus `<remarks>` if wanted) of a type, field, property or method. Return null when there is none. Multi-line text is allowed, `Doc` writes it as `///` lines.
+  - `GetParameterSummary(ParameterInfo)` returns the `<param>` text. For the return parameter (`method.ReturnParameter`) it returns the `<returns>` text.
+  - Match members by reflection identity (`MemberInfo` equality), not by name, so overloads work.
+- Member order: `Doc` uses `MetadataToken` order. If the generator emits an explicit member order list, add it to the provider seam and change `MemberReader` to use it.
+

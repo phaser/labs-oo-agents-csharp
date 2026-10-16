@@ -34,3 +34,14 @@
 - A name that clashes with `System.Threading.Tasks.Task` breaks every async file that imports the namespace. Rename the type and keep the persisted name in the discriminator.
 - `JsonObject` has no collection-expression support. Write `= new();`.
 - BSD `sed -i` on macOS needs `-i ''`. A failed `sed` before `&&` skips the rest of a command chain.
+
+## Reflection (T05)
+
+- `NullabilityInfoContext` reports unconstrained type parameters as nullable. Do not print `?` for a generic parameter.
+- Compiler-generated record members (`Equals(T)`, `Deconstruct`, `<Clone>$`) carry `[CompilerGenerated]`. Filter on it. A record class is detectable by the `<Clone>$` method.
+- `Attribute.IsDefined(member, type, inherit: true)` honors `inherit` for properties. `MemberInfo.GetCustomAttributes(bool)` does not.
+- An auto-property has a backing field named `<Name>k__BackingField`. Use it to tell a property that is safe to read from a computed one.
+- `init` setters are detectable: `SetMethod.ReturnParameter.GetRequiredCustomModifiers()` contains `IsExternalInit`.
+- Fixture classes in tests need `#pragma warning disable CS0649` when only reflection reads their fields. Private `const` and `static readonly` fields need a `_` prefix too.
+- macOS `sed` has no `\b`. Use `perl -pi -e` for word-boundary renames.
+
