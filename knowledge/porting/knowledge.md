@@ -56,4 +56,13 @@
 - Private `const` fields need a `_` prefix too (also for a default parameter value).
 - Hostile SQLite file: `PRAGMA trusted_schema=OFF`, `SQLitePCL.raw.sqlite3_db_config(conn.Handle, 1010, 1, out _)` (DEFENSIVE), then compare `sqlite_master` with a reference in-memory database built from the same DDL. Stored SQL text drops `IF NOT EXISTS`.
 - Keyset paging with a row value works in SQLite: `WHERE (insertion_order, rowid) > (@o, @r) ORDER BY insertion_order, rowid LIMIT n`. Stop reading a `SqliteDataReader` early to bound the page memory.
+||||||| parent of 64237cf (Add PFormat value printer and truncating writers (T06))
+
+## Value printing (T06)
+
+- A one-line attempt that nests inside another doubles the work at every level (render for the width check, then render again). Write the attempt into a writer that reports overflow at the line width, and let a nested container write straight into that writer. Then a deep structure costs about depth squared.
+- xUnit `[InlineData]` turns a lone surrogate into U+FFFD. Build such a string in the test body.
+- `FieldInfo.GetValue` on an auto-property backing field runs no user code. `PropertyInfo.GetValue` runs the getter, which can be a computed override of a virtual property.
+- `FileStreamOptions { Mode = CreateNew, UnixCreateMode = ... }` gives the `mkstemp` behavior (new file, mode 0600). Guard `UnixCreateMode` with `!OperatingSystem.IsWindows()`.
+- Bash heredoc without quotes expands `$` and `\`. Quote the delimiter (`<<'EOF'`) when the text is C# source.
 

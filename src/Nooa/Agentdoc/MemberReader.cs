@@ -79,6 +79,32 @@ internal static class MemberReader
         return result;
     }
 
+    /// <summary>
+    /// Reads a field, or the backing field of an auto-property. Returns false for a computed property: its getter
+    /// can have side effects, and a virtual getter can hide a computed override. No user code runs.
+    /// </summary>
+    public static bool TryReadValue(MemberInfo member, object instance, out object? value)
+    {
+        value = null;
+        if (member is FieldInfo field)
+        {
+            value = field.GetValue(instance);
+            return true;
+        }
+
+        var property = (PropertyInfo)member;
+        var backingField = property.GetMethod?.IsPublic == true
+            ? property.DeclaringType!.GetField($"<{property.Name}>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)
+            : null;
+        if (backingField is null)
+        {
+            return false;
+        }
+
+        value = backingField.GetValue(instance);
+        return true;
+    }
+
     /// <summary>True when the member carries <see cref="HiddenAttribute"/>.</summary>
     public static bool IsHidden(MemberInfo member) => Attribute.IsDefined(member, typeof(HiddenAttribute), inherit: true);
 

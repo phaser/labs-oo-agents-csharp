@@ -86,4 +86,30 @@ public class MemberReaderTests
         Assert.True(MemberReader.IsHidden(typeof(Dog).GetField("Hide")!));
         Assert.False(MemberReader.IsHidden(typeof(Dog).GetField("Breed")!));
     }
+
+    private sealed class Reads
+    {
+        public int Field = 4;
+        public int Auto { get; init; } = 5;
+        public int Computed => throw new InvalidOperationException("getter must not run");
+        public int SetOnly { private get; set; }
+    }
+
+    [Fact]
+    public void TryReadValue_FieldAndAutoProperty_ReturnsValue()
+    {
+        var instance = new Reads();
+        Assert.True(MemberReader.TryReadValue(typeof(Reads).GetField("Field")!, instance, out var field));
+        Assert.Equal(4, field);
+        Assert.True(MemberReader.TryReadValue(typeof(Reads).GetProperty("Auto")!, instance, out var auto));
+        Assert.Equal(5, auto);
+    }
+
+    [Fact]
+    public void TryReadValue_ComputedOrNonPublicGetter_ReturnsFalseWithoutRunningCode()
+    {
+        var instance = new Reads();
+        Assert.False(MemberReader.TryReadValue(typeof(Reads).GetProperty("Computed")!, instance, out _));
+        Assert.False(MemberReader.TryReadValue(typeof(Reads).GetProperty("SetOnly")!, instance, out _));
+    }
 }
