@@ -523,6 +523,16 @@ public class SqliteStorageManagerTests : IDisposable
     }
 
     [Fact]
+    public void Open_TriggerNamedLikeATable_IsRefused()
+    {
+        // SQLite keeps trigger names apart from table names, so a trigger can be called "events".
+        CreateSessionFile();
+        ExecRaw("CREATE TRIGGER events AFTER INSERT ON events BEGIN UPDATE events SET status = 'x'; END");
+
+        Assert.Throws<StorageSchemaException>(() => new SqliteStorageManager(_dir.File("s.db")));
+    }
+
+    [Fact]
     public void Open_FileWithAChangedTableDefinition_IsRefused()
     {
         ExecRaw("CREATE TABLE events (tag TEXT PRIMARY KEY, data TEXT GENERATED ALWAYS AS (1) VIRTUAL)");

@@ -70,25 +70,33 @@ internal static class SqliteSchema
         }
 
         var allowed = ReadObjects(reference);
-        foreach (var (name, found) in ReadObjects(conn))
+        foreach (var found in ReadObjects(conn))
         {
-            if (!allowed.TryGetValue(name, out var want) || want != found)
+            if (found.Type is not ("table" or "index"))
             {
                 throw new StorageSchemaException(
-                    $"The database holds an unexpected {found.Type} '{name}'. The file is not a Nooa session database or was changed.");
+                    $"The database holds an unexpected {found.Type} '{found.Name}'. Triggers and views are not allowed in a Nooa session database.");
+            }
+
+            if (!allowed.Contains(found))
+            {
+                throw new StorageSchemaException(
+                    $"The database holds an unexpected {found.Type} '{found.Name}'. The file is not a Nooa session database or was changed.");
             }
         }
     }
 
-    private static Dictionary<string, (string Type, string Table, string? Sql)> ReadObjects(SqliteConnection conn)
+    // Keyed by every column, not by name: SQLite keeps trigger names apart from table names, so a trigger can share a
+    // name with a table. A set of full rows cannot hide one object behind another.
+    private static HashSet<(string Type, string Name, string Table, string? Sql)> ReadObjects(SqliteConnection conn)
     {
         using var command = conn.CreateCommand();
-        command.CommandText = "SELECT name, type, tbl_name, sql FROM sqlite_master";
+        command.CommandText = "SELECT type, name, tbl_name, sql FROM sqlite_master";
         using var reader = command.ExecuteReader();
-        var objects = new Dictionary<string, (string, string, string?)>();
+        var objects = new HashSet<(string, string, string, string?)>();
         while (reader.Read())
         {
-            objects[reader.GetString(0)] = (reader.GetString(1), reader.GetString(2), reader.IsDBNull(3) ? null : reader.GetString(3));
+            objects.Add((reader.GetString(0), reader.GetString(1), reader.GetString(2), reader.IsDBNull(3) ? null : reader.GetString(3)));
         }
 
         return objects;

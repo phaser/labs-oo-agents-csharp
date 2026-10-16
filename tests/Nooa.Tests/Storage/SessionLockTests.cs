@@ -101,4 +101,20 @@ public class SessionLockTests : IDisposable
         Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(_dir.File("s.lock")));
         Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(_dir.File("s.lock.guard")));
     }
+
+    [Fact]
+    public void Acquire_DirectoryWritableByOthers_IsRefused()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        var shared = Directory.CreateDirectory(_dir.File("shared")).FullName;
+        File.SetUnixFileMode(shared, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute | UnixFileMode.OtherWrite | UnixFileMode.OtherExecute);
+
+        var e = Assert.Throws<UnauthorizedAccessException>(() => SessionLock.Acquire(Path.Combine(shared, "s.lock")));
+
+        Assert.Contains("writable by group or others", e.Message);
+    }
 }

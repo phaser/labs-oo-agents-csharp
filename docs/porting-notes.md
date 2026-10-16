@@ -192,3 +192,8 @@ class OrderResult
 **Tests:** the backend contract (`tests/test_event_backend_protocol.py`, round-trip types of `test_event_backend_roundtrip.py`) runs against both backends through the abstract `IEventBackendTests`. `SqliteEventBackendTests`, `SqliteStorageManagerTests` and `SessionLockTests` port `test_sqlite_corruption_resilience.py`, `test_sqlite_specific.py`, `test_sqlite_close_commit.py`, `test_session_resume_tag_collision.py` (SQLite parts) and `tests/storage/test_sqlite_public_options.py`. New tests cover unknown event types, oversized rows, tampered snapshots, schema mismatch and SQL text in tags and ids.
 **Skipped tests:** `test_sqlite_reconnect.py` and the virtiofs tests (not ported); registry and `LLMOutput` tests in `test_sqlite_specific.py`; `DecisionRecord`, `Reasoning`, `PythonOutput` value and `_json_safe` tests in `test_event_backend_roundtrip.py` (types or helpers not in the port); every test that needs an `Agent` or `EventManager` (T12); `tests/storage/test_snapshot.py`, `test_serialization.py`, `test_markers.py`, `test_snapshot_vars.py` and `tests/runtime/test_snapshot.py` (T12, T15).
 
+## Storage hardening follow-up (T07b)
+
+**C#:** `SqliteSchema.Verify` compares full `sqlite_master` rows (type, name, table, sql) as a set and refuses any trigger or view outright. Keying by name alone let a trigger that shares a table's name hide behind the table row. `SessionLock.Acquire` refuses a lock directory that is writable by group or others (Unix): .NET has no `O_NOFOLLOW` open, so the symlink check and the open are not atomic, and a directory that only the user can write closes that race.
+**Why:** security review of PR #8.
+**Tests:** `Open_TriggerNamedLikeATable_IsRefused`, `Acquire_DirectoryWritableByOthers_IsRefused`.
