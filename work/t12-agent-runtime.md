@@ -43,8 +43,21 @@ Upstream (pin in the plan):
 
 Keep `actor.py` trimmed to what Template / Predict / CodeAct need.
 
+<<<<<<< HEAD
 From T07 (storage): `IStorageManager` has the blob API only (`SaveSnapshotJson`, `LoadSnapshotJson`, `GetLatestSnapshotId`, `ListSnapshots`). T12 adds:
 - `AgentSnapshot` (version 2) and `snapshot_to_json` / `snapshot_from_json`: walk agent fields, context blocks and attributes. Check `version` and the type allowlist before restoring any value (the file can be untrusted). Never `BinaryFormatter` or `TypeNameHandling` (D11).
 - `serialize` / `deserialize` with the type allowlist, `markers.py` (`nosnapshot`, `snapshotable`), `save_snapshot(agent)`, `restore_snapshot(id, agent)`, `restore_latest_snapshot`.
 - The upstream tests that need an agent: `test_sqlite_storage_latest.py`, `test_sqlite_close_commit.py` (snapshot part), `test_session_resume_tag_collision.py` (agent and `EventManager` parts), `tests/storage/test_snapshot.py`, `test_serialization.py`, `test_markers.py`, `tests/runtime/test_snapshot.py`.
 - `EventManager` allocates tags through `IEventBackend.AllocateNextTag()` so that several managers on one backend never collide.
+||||||| parent of a89d5c0 (Add the agent source generator and the runtime seam)
+=======
+### From T11 (the seam T12 implements)
+
+- `Agent` must implement `Nooa.IAgenticTarget` (`InvokeAgenticAsync<T>` and the void overload). Generated `[Agentic]` bodies call it on `this` with a `Nooa.Strategies.CurrentCall`.
+- `CurrentCall` holds: `Id`, `MethodName`, `Signature` (text), `Docstring` (expanded method prompt), `Arguments` (ordered `CallArgument(Name, Type, Value)`, no trailing `CancellationToken`), `ReturnType` (null for `Task`), `StrategyType` (from `[Strategy]`), `ParentId` (runtime sets it).
+- Not ported yet, add here when needed: `decorator`, `is_async` (always async), `pre_ellipsis_code` (not supported), `param_specs` (needs the spec attribute), `session_locals`, `execution_locals`, `task_tag` (need the CodeAct types), upstream equality by `id`, `format_parameters_as_code` and `format_signature` (strategy rendering, T14). A `with` copy keeps all fields.
+- Class data: `AgentMetadataRegistry.TryGet(agentType)` gives `Llm` (from `[AgentOptions]`) and the system prompt renderer (`Func<object,string>`, pass the agent). Walk base types yourself for inheritance.
+- Doc text: the generated `IAgentDocProvider` is registered by a module initializer. Its text keeps `{Member.Path}` placeholders as written. Use `AgentMetadata.SystemPrompt` for the rendered prompt.
+- Method prompts are already expanded in `CurrentCall.Docstring`. Parameter docs reach the model only through `AgentDocs`.
+- `[NoSnapshot]` and `[NoTrace]` exist without behaviour. The wrapper reads them.
+>>>>>>> a89d5c0 (Add the agent source generator and the runtime seam)

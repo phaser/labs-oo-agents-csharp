@@ -197,3 +197,16 @@ class OrderResult
 **C#:** `SqliteSchema.Verify` compares full `sqlite_master` rows (type, name, table, sql) as a set and refuses any trigger or view outright. Keying by name alone let a trigger that shares a table's name hide behind the table row. `SessionLock.Acquire` refuses a lock directory that is writable by group or others (Unix): .NET has no `O_NOFOLLOW` open, so the symlink check and the open are not atomic, and a directory that only the user can write closes that race.
 **Why:** security review of PR #8.
 **Tests:** `Open_TriggerNamedLikeATable_IsRefused`, `Acquire_DirectoryWritableByOthers_IsRefused`.
+||||||| parent of a89d5c0 (Add the agent source generator and the runtime seam)
+
+## Agent source generator (`metaclass.py`, `decorators.py`, `ellipsis_detection.py`, `strategies/current_call.py`)
+
+**C#:** `Nooa.Generators` (incremental generator). `[Agentic]` partial methods get a body that builds a `CurrentCall` and calls `IAgenticTarget`. See `work/t11-source-generator.md` for the diagnostics `NOOA0001`-`NOOA0009`.
+**Why:** C# has no metaclass, decorators or `...` bodies (decisions D3-D6).
+**Differences:**
+- `{Member.Path}` placeholders cover member paths on `this` only. Upstream `eval` also reaches method parameters and any expression. Use `{{` and `}}` for literal braces.
+- `@strategy(llm=..., decision_model=..., context=..., truncation=...)` keeps only the strategy type (`[Strategy(typeof(X))]`). The rest returns with T12 and T14 as attributes or call options.
+- Only the trailing `CancellationToken` is special. `CurrentCall` has one ordered argument list instead of `args` and `kwargs`.
+- No `async def` / sync method split: every agentic method returns a task.
+**Tests:** `test_metaclass.py` cases about wrapping, tracing, hooks, call stacks, generators with spans and context managers do not apply to a generator. Runtime parts move to T12. `test_decorator_strategy.py` (`_strategy_override` attributes) becomes `CurrentCall.StrategyType` tests. `test_pure_python_method_rejection.py` belongs to the REPL (T15).
+
