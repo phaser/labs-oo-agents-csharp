@@ -45,3 +45,15 @@
 - Fixture classes in tests need `#pragma warning disable CS0649` when only reflection reads their fields. Private `const` and `static readonly` fields need a `_` prefix too.
 - macOS `sed` has no `\b`. Use `perl -pi -e` for word-boundary renames.
 
+## SQLite and storage (T07)
+
+- `Microsoft.Data.Sqlite`: set `Pooling=false` in the connection string. A pooled connection keeps the file open after `Dispose` (macOS file locks, WAL files stay). Use a full path as `DataSource`: a path such as `file:...` is read as a URI.
+- `SqliteException.SqliteErrorCode` 11 (corrupt) and 26 (not a database) give corruption. `new SqliteException(message, code)` is public, so a test can build one.
+- A `SqliteCommand` with a parameter list is all that is needed for safe SQL. Read a blob with `CASE WHEN length(CAST(data AS BLOB)) <= @max THEN data END` so an oversized row never loads.
+- .NET `FileShare.None` takes a mandatory lock on Unix too (flock). Other readers fail with `IOException`, also with `FileShare.ReadWrite`. Keep readable data in a separate file from the lock file.
+- A test overwrites pages after the first two with `0xAB` to get a real `SQLITE_CORRUPT`. Reads degrade; a write throws.
+- Abstract xUnit test classes with `[Fact]` methods run once per derived class: use them for backend contract tests. `TheoryData` members can be `static` on the base class.
+- Private `const` fields need a `_` prefix too (also for a default parameter value).
+- Hostile SQLite file: `PRAGMA trusted_schema=OFF`, `SQLitePCL.raw.sqlite3_db_config(conn.Handle, 1010, 1, out _)` (DEFENSIVE), then compare `sqlite_master` with a reference in-memory database built from the same DDL. Stored SQL text drops `IF NOT EXISTS`.
+- Keyset paging with a row value works in SQLite: `WHERE (insertion_order, rowid) > (@o, @r) ORDER BY insertion_order, rowid LIMIT n`. Stop reading a `SqliteDataReader` early to bound the page memory.
+

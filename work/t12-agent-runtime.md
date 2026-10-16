@@ -42,3 +42,9 @@ Upstream (pin in the plan):
 ## Notes
 
 Keep `actor.py` trimmed to what Template / Predict / CodeAct need.
+
+From T07 (storage): `IStorageManager` has the blob API only (`SaveSnapshotJson`, `LoadSnapshotJson`, `GetLatestSnapshotId`, `ListSnapshots`). T12 adds:
+- `AgentSnapshot` (version 2) and `snapshot_to_json` / `snapshot_from_json`: walk agent fields, context blocks and attributes. Check `version` and the type allowlist before restoring any value (the file can be untrusted). Never `BinaryFormatter` or `TypeNameHandling` (D11).
+- `serialize` / `deserialize` with the type allowlist, `markers.py` (`nosnapshot`, `snapshotable`), `save_snapshot(agent)`, `restore_snapshot(id, agent)`, `restore_latest_snapshot`.
+- The upstream tests that need an agent: `test_sqlite_storage_latest.py`, `test_sqlite_close_commit.py` (snapshot part), `test_session_resume_tag_collision.py` (agent and `EventManager` parts), `tests/storage/test_snapshot.py`, `test_serialization.py`, `test_markers.py`, `tests/runtime/test_snapshot.py`.
+- `EventManager` allocates tags through `IEventBackend.AllocateNextTag()` so that several managers on one backend never collide.
