@@ -34,4 +34,6 @@ Upstream (pin in the plan):
 
 ## Notes
 
+From T04: port `CacheBoundary` and the message-list element type here (it is not in T04). `LlmUsage.FromProvider` takes `JsonNode?`.
+
 Anthropic / Responses adapters and lossless reasoning replay are B09. Set a token budget per call (prompt-injection checklist rule 5).

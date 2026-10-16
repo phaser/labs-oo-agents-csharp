@@ -3,7 +3,7 @@ pr:
 pr_url:
 jira:
 epic: M1
-status: todo
+status: open
 created: 2026-10-16
 updated: 2026-10-16
 tags: []
@@ -27,13 +27,15 @@ Upstream (pin in the plan):
 
 ## Progress
 
-- [ ] Port `EventBase` (id, tag, timestamp, metadata, role) as a record hierarchy
-- [ ] Register event types with `[JsonPolymorphic]` / `[JsonDerivedType]` (explicit allowlist, D11)
-- [ ] Port events from `events.py` (`Task`, `Message`, `Error`, `PythonOutput` → `CellOutput`, `Before/AfterAgentCall`, `LlmCallStart/End`, `Summary`, `SystemPrompt`)
-- [ ] Port `LlmResponse` with ordered parts (`AssistantText`, `ToolCall`, `AssistantReasoning`), `LlmUsage`, finish reason, opaque `JsonNode Native`
-- [ ] Round-trip JSON tests for every event type
-- [ ] Port tests: `test_events*.py`, event parts of `tests/context_blocks/`
+- [x] Port `EventBase` (id, tag, timestamp, metadata, role) as a record hierarchy
+- [x] Register event types with `[JsonPolymorphic]` / `[JsonDerivedType]` (explicit allowlist, D11)
+- [x] Port events from `events.py` (`Task`, `Message`, `Error`, `PythonOutput` → `CellOutput`, `Before/AfterAgentCall`, `LlmCallStart/End`, `Summary`, `SystemPrompt`)
+- [x] Port `LlmResponse` with ordered parts (`AssistantText`, `ToolCall`, `AssistantReasoning`), `LlmUsage`, finish reason, opaque `JsonNode Native`
+- [x] Round-trip JSON tests for every event type
+- [x] Port tests: `test_events*.py`, event parts of `tests/context_blocks/`
 
 ## Notes
 
-—
+Decisions and deviations: `docs/porting-notes.md`, "Event IR". Deferred: rendering hooks (T13), `CacheBoundary` (T09), Tui/Decision/legacy events (not v1 / B03), `ExecutionResult` (T15).
+
+No new NuGet package.
