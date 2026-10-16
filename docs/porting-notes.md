@@ -197,3 +197,44 @@ class OrderResult
 **C#:** `SqliteSchema.Verify` compares full `sqlite_master` rows (type, name, table, sql) as a set and refuses any trigger or view outright. Keying by name alone let a trigger that shares a table's name hide behind the table row. `SessionLock.Acquire` refuses a lock directory that is writable by group or others (Unix): .NET has no `O_NOFOLLOW` open, so the symlink check and the open are not atomic, and a directory that only the user can write closes that race.
 **Why:** security review of PR #8.
 **Tests:** `Open_TriggerNamedLikeATable_IsRefused`, `Acquire_DirectoryWritableByOthers_IsRefused`.
+
+## `PFormat` value printer (agentdoc, T06)
+
+**C#:** `PFormat.Format(value, maxLength, maxString, maxDepth, expandAll, unquoteStrings)`, `PFormat.Format(value, FormatConfig)`, `PFormat.Write(TextWriter, ...)`,
+`PFormat.TruncatingFormat(value, maxChars, ...)`, `TruncatingTextWriter` and `FileBackedTruncatingTextWriter`, in `Nooa.Agentdoc`. `FormatConfig.MaxLength/MaxString/MaxDepth` map to the parameters of the same name.
+This is what the model reads as values in the `state` block and in REPL output.
+
+| Value | Text |
+|-------|------|
+| `null`, `true`, `42`, `1.5`, `1.0`, `'x'` | as written. A whole `double`/`float` keeps `.0`. `NaN` and infinity are `double.NaN`, `double.PositiveInfinity`. Invariant culture. |
+| string | C# regular literal with C# escapes (`"a\"b\n"`). A string with a line break and no other control character is a verbatim literal `@"..."` that keeps the line breaks (`"` becomes `""`). |
+| enum | `Color.Red`, flags `Perm.R \| Perm.W`, unknown `(Perm)8` |
+| `Type`, delegate | `typeof(List<int>)`, `<Func<int, int>>` |
+| list, array, queue | `[1, 2]` |
+| tuple | `(1, "a")` |
+| set | `{1, 2}` |
+| dictionary | `{"k": v}` |
+| record, class, struct | `Person { Name = "Ada", Age = 36 }` (one line, `Name { }` when empty) |
+| type with its own `ToString`, and framework objects | the `ToString` text (invariant culture, `DateTime` as ISO 8601). A throwing `ToString` gives `<TypeName>`. |
+| cycle | `<cycle>` |
+
+Truncation markers keep the upstream meaning (the marker means the value is not complete):
+`string(len=N, [:H]="...", [-T:]="...")`, `List<int>(len=N, [:H]=[...], [-T:]=[...])` (ordered), `HashSet<int>(len=N, items={..., ...})` (unordered),
+`Dictionary<string, int>(len=N, items={a: 1, ..., z: 26})`, `Type(text_len=N, [:H]="...", [-T:]="...")` (cut `ToString`), `Name { A = 1, ... }` (members), `{Dictionary<string, int>: 3 items}` / `[List<int>: 3 items]` / `Name { ... }` at the depth limit.
+Head is the ceiling half and tail the floor half of the limit. A container whose one-line form is under 120 characters is one line. A longer one has one item per line (4-space indent). `expandAll` forces many lines.
+
+**Why `{"k": v}` for dictionaries:** short, readable for the model, matches the upstream marker (`items={...}`), and cannot be mistaken for a set (a set has no colons). `{ ["k"] = v }` is longer for no gain. An empty set and an empty dictionary are both `{}`, as upstream.
+**Why `Name { A = 1 }` for objects:** it is the shape of a C# record `ToString` and of an object initializer, so it reads as C#.
+**Safety:** an object shows public fields and auto-properties only (`MemberReader`). It reads the backing field of an auto-property. No property getter runs, also not a virtual one that a derived type overrides with computed code. Members with a leading underscore, `[Hidden]` members and delegates are left out. Only user types are walked by reflection (`ReferencedTypes.IsCustom`): framework objects print `ToString`, so no framework internals are read. Only arrays, tuples, dictionaries, sets and types with a count are enumerated. A lazy `IEnumerable` never is. A reference is tracked while it is written, for `<cycle>`. Nesting is capped at 100 when the caller sets no depth, so a deep structure cannot overflow the stack. A one-line attempt stops when it reaches the width, so the cost stays low for deep structures.
+`FileBackedTruncatingTextWriter` creates its file with a random name and mode 0600 (`CreateNew`). A prefix or suffix with a path separator throws. If the file fails, the writer falls back to memory (`FilePath` is null).
+**Deviations:**
+- `pformat(instance_mode="type")` and `concise` are `Doc()` (T05). They are not parameters of `PFormat`. `console` and `indent_guides` (Rich compatibility) are dropped.
+- `pprint()` (`runtime/pprint.py`) is a wrapper that writes `pformat` plus a newline to stdout. `PFormat.Write(TextWriter, ...)` is the core. The REPL `pprint` global comes with the REPL task (T15).
+- A limit of 0 or below throws `ArgumentOutOfRangeException` (upstream treats 0 as "no limit" in some paths). Use null for no limit.
+- `unquoteStrings` returns the untruncated string as it is. Upstream strips the quotes of its `repr`, which left escapes in the text.
+- A type with its own `ToString` prints that text, as upstream honors a custom `__repr__`. This runs user code (it can have side effects or show a `[Hidden]` field). Records keep member printing, because their `ToString` is generated.
+- Not ported (Python only): `__instance_values__`, `spec(max_string=...)`, pydantic `exclude`, NamedTuple, `__slots__`, `_ClassRef`/`_InstanceRef`, `sys.stdout` printing.
+- Per-field `max_string` override (`test_event_max_string_override`): needs the event types and the context formatter, so it moves to T13 with the "must not truncate" rule.
+**Tests:** ported in `PFormatTests` (cycles, head and tail markers, budget parameters, truncating format), `ValueRendererTests` (hidden fields, objects), `LiteralFormatterTests`, `CollectionReaderTests`, `TruncatingTextWriterTests` and `FileBackedTruncatingTextWriterTests`.
+Not applicable (Python only): `test_annotated_types`, `test_dataclass_properties`, `test_discover_pep563`, `test_discover_pydantic_forward_refs`, `test_namedtuple_future_annotations`, `test_typeddict_future_annotations`, `test_pandas_adapter`, `test_protocols`, `test_registry`, `test_metadata`, `test_docs` (`spec()`), `test_doc_config`, `test_visibility` (module variables, `hidden` blocks), `test_skill_lifecycle_visibility`, `test_referenced_types_demo`.
+`test_structured` (type extraction) is covered by T05 (`MemberReader`, `ReferencedTypes`). `test_function_default_rendering` (lambda and function defaults) does not apply: C# defaults are compile-time constants. `test_pformat_remove_budget` becomes the limit validation tests. `test_pprint_respects_hidden` is ported except the `spec()`, `__instance_values__`, `__slots__`, pydantic and `instance_mode="type"` cases.

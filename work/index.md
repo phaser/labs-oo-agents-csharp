@@ -13,8 +13,8 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
-| [T03 Errors and configuration](3-errors-config.md) | [#3](https://github.com/phaser/labs-oo-agents-csharp/pull/3) | — | open | 2026-10-16 |
-| [T03b Secrets trust: fail closed, no credential swap](4-secrets-trust.md) | [#4](https://github.com/phaser/labs-oo-agents-csharp/pull/4) | — | open | 2026-10-16 |
+| [T03 Errors and configuration](3-errors-config.md) | [#3](https://github.com/phaser/labs-oo-agents-csharp/pull/3) | — | merged | 2026-10-16 |
+| [T03b Secrets trust: fail closed, no credential swap](4-secrets-trust.md) | [#4](https://github.com/phaser/labs-oo-agents-csharp/pull/4) | — | merged | 2026-10-16 |
 | [T04 Event IR and LlmResponse](6-event-ir.md) | [#6](https://github.com/phaser/labs-oo-agents-csharp/pull/6) | — | merged | 2026-10-16 |
 | [T05 Agentdoc renderer: Doc()](5-agentdoc-renderer.md) | [#5](https://github.com/phaser/labs-oo-agents-csharp/pull/5) | — | merged | 2026-10-16 |
 | [T06 Agentdoc PFormat() and truncation](9-agentdoc-pformat.md) | [#9](https://github.com/phaser/labs-oo-agents-csharp/pull/9) | — | merged | 2026-10-16 |
