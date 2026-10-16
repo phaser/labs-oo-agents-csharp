@@ -15,7 +15,7 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 |------|----|------|--------|---------|
 | [T03 Errors and configuration](3-errors-config.md) | [#3](https://github.com/phaser/labs-oo-agents-csharp/pull/3) | — | open | 2026-10-16 |
 | [T03b Secrets trust: fail closed, no credential swap](4-secrets-trust.md) | [#4](https://github.com/phaser/labs-oo-agents-csharp/pull/4) | — | open | 2026-10-16 |
-| [T04 Event IR and LlmResponse](t04-event-ir.md) | — | — | open | 2026-10-16 |
+| [T04 Event IR and LlmResponse](6-event-ir.md) | [#6](https://github.com/phaser/labs-oo-agents-csharp/pull/6) | — | open | 2026-10-16 |
 | [T05 Agentdoc renderer: Doc()](t05-agentdoc-renderer.md) | — | — | todo | 2026-10-16 |
 | [T06 Agentdoc PFormat() and truncation](t06-agentdoc-pformat.md) | — | — | todo | 2026-10-16 |
 | [T07 Storage: in-memory and SQLite](t07-storage.md) | — | — | todo | 2026-10-16 |
