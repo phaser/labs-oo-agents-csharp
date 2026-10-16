@@ -6,8 +6,8 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
-| [T01 Port plan](1-port-plan.md) | [#1](https://github.com/phaser/labs-oo-agents-csharp/pull/1) | — | open | 2026-10-16 |
-| [T02 Solution skeleton and CI](t02-solution-skeleton.md) | — | — | todo | 2026-10-16 |
+| [T01 Port plan](1-port-plan.md) | [#1](https://github.com/phaser/labs-oo-agents-csharp/pull/1) | — | merged | 2026-10-16 |
+| [T02 Solution skeleton and CI](2-solution-skeleton.md) | [#2](https://github.com/phaser/labs-oo-agents-csharp/pull/2) | — | open | 2026-10-16 |
 
 ## M1 — Foundations
 

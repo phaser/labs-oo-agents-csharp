@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/examples/">
+    <Project Path="examples/Quickstart/Quickstart.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Nooa.Generators/Nooa.Generators.csproj" />
+    <Project Path="src/Nooa/Nooa.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Nooa.Generators.Tests/Nooa.Generators.Tests.csproj" />
+    <Project Path="tests/Nooa.Tests/Nooa.Tests.csproj" />
+  </Folder>
+</Solution>

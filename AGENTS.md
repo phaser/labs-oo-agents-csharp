@@ -8,22 +8,28 @@ You are an expert software engineering assistant working on a .NET / C# port of 
 This repo is a C# translation of [NVIDIA-NeMo/labs-OO-Agents](https://github.com/NVIDIA-NeMo/labs-OO-Agents) (NOOA, "NVIDIA Object Oriented Agents"), a Python framework where an agent is a class: fields are state, methods are capabilities, docstrings are prompts, type annotations are contracts, and methods with a `...` body are run by an LLM loop.
 
 * **Upstream is the specification.** Behaviour, names and tests come from upstream unless the port plan records a deliberate deviation.
-* **Upstream reference checkout:** clone upstream into `reference/` (git-ignored) at the commit pinned in the plan. Do not edit it.
-  ```bash
-  git clone https://github.com/NVIDIA-NeMo/labs-OO-Agents reference
-  git -C reference checkout <pinned-sha>
-  ```
+* **Upstream reference checkout:** run `scripts/clone-reference.sh`. It clones upstream into `reference/` (git-ignored) at the pinned commit. The script is the single source of the pin. Do not edit `reference/`.
 * **Port, then adapt.** Translate the Python concept to idiomatic C#. Do not copy Python idioms that C# expresses differently (e.g. duck typing → interfaces, decorators → attributes or source generators, docstrings → XML doc comments or attributes).
 * **Record every deviation.** When C# cannot express an upstream feature the same way, write the decision and the reason in `docs/porting-notes.md`.
 * **Port tests with code.** Each ported module brings its upstream tests, translated to xUnit.
-* **License:** Apache 2.0, the same `LICENSE` as upstream. `NOTICE` credits upstream. Ported files carry a header that names the upstream file they derive from (Apache 2.0 §4b).
+* **License:** Apache 2.0, the same `LICENSE` as upstream. `NOTICE` credits upstream.
+* **File headers:** every `.cs` and `.sh` file starts with an SPDX header (`scripts/check-license-headers.sh` checks it in CI). A ported file also names its upstream source (Apache 2.0 §4b):
+  ```csharp
+  // SPDX-FileCopyrightText: Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+  // SPDX-FileCopyrightText: Copyright (c) 2026 Cristian Bidea
+  // SPDX-License-Identifier: Apache-2.0
+  // Ported from: src/nooa/<path>.py
+  ```
+  A new file that is not ported has only the second and third lines.
 
 ## Stack
 
 * **Language:** C# (latest), .NET 10 (`net10.0`), nullable reference types enabled
+* **Solution:** `Nooa.slnx`; SDK pinned in `global.json`
 * **Build:** `dotnet build` with `TreatWarningsAsErrors=true` in `Directory.Build.props`
 * **Format:** `dotnet format --verify-no-changes`
-* **Tests:** xUnit (`dotnet test`)
+* **Tests:** xUnit v3 on Microsoft.Testing.Platform (`dotnet test`)
+* **Packages:** central versions in `Directory.Packages.props`. Pin exact versions. A new version must be at least 14 days old and have a GO-tier license (MIT, Apache-2.0, BSD). Pin GitHub Actions to a commit SHA.
 
 ## Core Principles
 
