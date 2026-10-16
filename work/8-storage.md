@@ -40,6 +40,6 @@ Persistent REPL variables (`persistent_vars.py`, `snapshot_vars.py`) wait for T1
 - Unknown `event_type` in a stored row throws `DeserializationException` (upstream: generic `Metadata` fallback). Corrupt JSON is skipped with a warning, as upstream.
 - No `register_event_type` and no legacy `LLMOutput` migration (D11: the allowlist is the `[JsonDerivedType]` list).
 - Reconnect on disk I/O error is not ported (tests need fault injection). `busy_timeout=5000`, `synchronous=FULL` and the journal mode are ported.
-- New safety limits: `maxBlobBytes` (default 64 MiB) for each stored event and snapshot; the schema version is checked at open.
+- New safety limits (`StorageLimits`): 64 MiB per row, 1,000,000 events, 1 GiB total; the schema version and `sqlite_master` are checked at open; `trusted_schema=OFF` and defensive mode; paged `AllEvents`; the session lock refuses symbolic links.
 - Moved to T12: `AgentSnapshot`, `serialize`/`deserialize` with type allowlist, `markers.py`, `json_snapshot.py`, `save_snapshot(agent)`, `restore_snapshot`, `restore_latest_snapshot`, tests that need an agent or `EventManager`.
 - Moved to T15: `persistent_vars.py`, `snapshot_vars.py`.

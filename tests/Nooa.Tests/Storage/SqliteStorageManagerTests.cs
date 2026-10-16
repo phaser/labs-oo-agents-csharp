@@ -91,7 +91,7 @@ public class SqliteStorageManagerTests : IDisposable
     [Fact]
     public void SaveSnapshotJson_AboveBlobLimit_Throws()
     {
-        using var storage = new SqliteStorageManager(maxBlobBytes: 20);
+        using var storage = new SqliteStorageManager(limits: new StorageLimits { MaxBlobBytes = 20 });
 
         Assert.Throws<ArgumentException>(() => storage.SaveSnapshotJson("{\"a\":\"" + new string('x', 30) + "\"}"));
     }
@@ -132,7 +132,7 @@ public class SqliteStorageManagerTests : IDisposable
             big.SaveSnapshotJson("{\"a\":\"" + new string('x', 500) + "\"}", "big");
         }
 
-        using var small = new SqliteStorageManager(_dir.File("s.db"), maxBlobBytes: 100);
+        using var small = new SqliteStorageManager(_dir.File("s.db"), limits: new StorageLimits { MaxBlobBytes = 100 });
 
         var e = Assert.Throws<DeserializationException>(() => small.LoadSnapshotJson("big"));
         Assert.Contains("above the limit", e.Message);
@@ -468,7 +468,7 @@ public class SqliteStorageManagerTests : IDisposable
     // -- corruption --
 
     [Fact]
-    public void Store_OnACorruptFile_ThrowsCorruptDatabase_AndReadsDegrade()
+    public void Open_OnACorruptFile_ThrowsBeforeUse()
     {
         using (var storage = new SqliteStorageManager(_dir.File("s.db"), journalMode: SqliteJournalMode.Delete))
         {
@@ -485,17 +485,150 @@ public class SqliteStorageManagerTests : IDisposable
             stream.Write(Enumerable.Repeat((byte)0xAB, (int)(stream.Length - 8192)).ToArray());
         }
 
-        using var reopened = new SqliteStorageManager(_dir.File("s.db"), journalMode: SqliteJournalMode.Delete);
+        var e = Record.Exception(() => new SqliteStorageManager(_dir.File("s.db"), journalMode: SqliteJournalMode.Delete));
 
-        // Reads do not throw: a corrupt page gives an empty or partial result.
-        _ = reopened.EventBackend.AllEvents().ToList();
-        _ = reopened.EventBackend.ActiveTags();
-        Assert.Throws<CorruptDatabaseException>(() =>
+        Assert.True(e is CorruptDatabaseException || (e is SqliteException se && SqliteSchema.IsCorruption(se)), e?.ToString());
+    }
+
+    // -- untrusted file --
+
+    private void CreateSessionFile()
+    {
+        using var storage = new SqliteStorageManager(_dir.File("s.db"));
+        storage.EventBackend.Store("1", User("a"));
+    }
+
+    private void ExecRaw(string sql)
+    {
+        using var conn = Raw("s.db");
+        using var command = conn.CreateCommand();
+        command.CommandText = sql;
+        command.ExecuteNonQuery();
+    }
+
+    [Theory]
+    [InlineData("CREATE TRIGGER evil AFTER INSERT ON events BEGIN UPDATE events SET status = 'x'; END")]
+    [InlineData("CREATE VIEW v AS SELECT * FROM events")]
+    [InlineData("CREATE TABLE extra (a TEXT)")]
+    [InlineData("CREATE INDEX idx_extra ON events(status)")]
+    public void Open_FileWithAnUnexpectedObject_IsRefused(string ddl)
+    {
+        CreateSessionFile();
+        ExecRaw(ddl);
+
+        var e = Assert.Throws<StorageSchemaException>(() => new SqliteStorageManager(_dir.File("s.db")));
+
+        Assert.Contains("unexpected", e.Message);
+        Assert.Equal((null, null), SqliteStorageManager.ReadLockOwner(_dir.File("s.lock")));
+    }
+
+    [Fact]
+    public void Open_FileWithAChangedTableDefinition_IsRefused()
+    {
+        ExecRaw("CREATE TABLE events (tag TEXT PRIMARY KEY, data TEXT GENERATED ALWAYS AS (1) VIRTUAL)");
+
+        Assert.Throws<StorageSchemaException>(() => new SqliteStorageManager(_dir.File("s.db")));
+    }
+
+    [Fact]
+    public void Open_FileWithOnlySomeExpectedObjects_CompletesTheSchema()
+    {
+        ExecRaw("CREATE TABLE schema_version (\n    version INTEGER NOT NULL\n)");
+
+        using var storage = new SqliteStorageManager(_dir.File("s.db"));
+
+        Assert.Equal(0, storage.EventBackend.Count);
+    }
+
+    [Fact]
+    public void Open_TurnsOffTrustedSchema_AndEnablesDefensiveMode()
+    {
+        using var storage = new SqliteStorageManager(_dir.File("s.db"));
+
+        Assert.Equal("0", Pragma(storage, "trusted_schema"));
+        using var command = storage.Connection.CreateCommand();
+        command.CommandText = "PRAGMA writable_schema=ON";
+        command.ExecuteNonQuery();
+        command.CommandText = "UPDATE sqlite_master SET sql = sql";
+        Assert.Throws<SqliteException>(() => command.ExecuteNonQuery());
+    }
+
+    [Fact]
+    public void Open_MoreEventsThanTheLimit_IsRefused()
+    {
+        using (var storage = new SqliteStorageManager(_dir.File("s.db")))
         {
-            for (var i = 1000; i < 1200; i++)
+            for (var i = 1; i <= 3; i++)
             {
-                reopened.EventBackend.Store(i.ToString(), User(new string('y', 200)));
+                storage.EventBackend.Store(i.ToString(), User("a"));
+            }
+        }
+
+        var e = Assert.Throws<DeserializationException>(
+            () => new SqliteStorageManager(_dir.File("s.db"), limits: new StorageLimits { MaxEventCount = 2 }));
+
+        Assert.Contains("more than 2 events", e.Message);
+    }
+
+    [Fact]
+    public void Open_MoreEventDataThanTheLimit_IsRefused()
+    {
+        using (var storage = new SqliteStorageManager(_dir.File("s.db")))
+        {
+            storage.EventBackend.Store("1", User(new string('x', 500)));
+            storage.EventBackend.Store("2", User(new string('x', 500)));
+        }
+
+        var e = Assert.Throws<DeserializationException>(
+            () => new SqliteStorageManager(_dir.File("s.db"), limits: new StorageLimits { MaxTotalEventBytes = 1000 }));
+
+        Assert.Contains("above the limit", e.Message);
+    }
+
+    [Fact]
+    public void AllEvents_StopsAtTheLimitsWhileReading()
+    {
+        using var storage = new SqliteStorageManager(limits: new StorageLimits { MaxEventCount = 2 });
+        for (var i = 1; i <= 3; i++)
+        {
+            storage.EventBackend.Store(i.ToString(), User("a"));
+        }
+
+        var seen = new List<EventBase>();
+        Assert.Throws<DeserializationException>(() =>
+        {
+            foreach (var e in storage.EventBackend.AllEvents())
+            {
+                seen.Add(e);
             }
         });
+        Assert.Equal(2, seen.Count);
+    }
+
+    [Fact]
+    public void AllEvents_ReadsManyPagesInOrder()
+    {
+        using var storage = new SqliteStorageManager();
+        for (var i = 1; i <= 250; i++)
+        {
+            storage.EventBackend.Store(i.ToString(), User("e" + i));
+        }
+
+        var contents = storage.EventBackend.AllEvents().Select(e => ((UserEvent)e).Content).ToList();
+
+        Assert.Equal(Enumerable.Range(1, 250).Select(i => "e" + i), contents);
+    }
+
+    [Fact]
+    public void AllEvents_PageByteBudget_StillReturnsEveryRow()
+    {
+        using var storage = new SqliteStorageManager();
+        var big = new string('z', 3 * 1024 * 1024);
+        for (var i = 1; i <= 12; i++)
+        {
+            storage.EventBackend.Store(i.ToString(), User(big + i));
+        }
+
+        Assert.Equal(12, storage.EventBackend.AllEvents().Count());
     }
 }

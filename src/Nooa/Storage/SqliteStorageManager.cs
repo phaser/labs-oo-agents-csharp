@@ -33,16 +33,13 @@ namespace Nooa.Storage;
 /// </remarks>
 public sealed class SqliteStorageManager : IStorageManager, IDisposable
 {
-    /// <summary>The default limit for one stored event or snapshot: 64 MiB.</summary>
-    public const long DefaultMaxBlobBytes = 64L * 1024 * 1024;
-
     private const string _memoryPath = ":memory:";
 
     private readonly string _dbPath;
     private readonly Lock _dbLock = new();
     private readonly SqliteConnection _conn;
     private readonly SessionLock? _sessionLock;
-    private readonly long _maxBlobBytes;
+    private readonly StorageLimits _limits;
     private bool _closed;
 
     /// <summary>Opens or creates a session database.</summary>
@@ -50,7 +47,7 @@ public sealed class SqliteStorageManager : IStorageManager, IDisposable
     /// <param name="mustExist">Refuse a missing file instead of creating it, and create nothing (no lock file either). Not valid with <c>:memory:</c>.</param>
     /// <param name="journalMode">Journal mode. Null uses WAL.</param>
     /// <param name="logger">Receives warnings about skipped rows.</param>
-    /// <param name="maxBlobBytes">The largest stored event or snapshot that the manager reads or writes.</param>
+    /// <param name="limits">Size limits for stored data. Null uses <see cref="StorageLimits.Default"/>.</param>
     /// <exception cref="SessionAlreadyActiveException">The file is open in another process or manager.</exception>
     /// <exception cref="FileNotFoundException"><paramref name="mustExist"/> is set and the file is missing.</exception>
     /// <exception cref="ArgumentException">A bad option value.</exception>
@@ -59,7 +56,7 @@ public sealed class SqliteStorageManager : IStorageManager, IDisposable
         bool mustExist = false,
         SqliteJournalMode? journalMode = null,
         ILogger? logger = null,
-        long maxBlobBytes = DefaultMaxBlobBytes)
+        StorageLimits? limits = null)
     {
         ArgumentException.ThrowIfNullOrEmpty(dbPath);
         if (journalMode is { } mode && !Enum.IsDefined(mode))
@@ -67,7 +64,10 @@ public sealed class SqliteStorageManager : IStorageManager, IDisposable
             throw new ArgumentOutOfRangeException(nameof(journalMode), journalMode, "journalMode must be Wal, Delete or null.");
         }
 
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxBlobBytes);
+        limits ??= StorageLimits.Default;
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limits.MaxBlobBytes);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limits.MaxEventCount);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(limits.MaxTotalEventBytes);
         var isMemory = dbPath == _memoryPath;
         if (mustExist && isMemory)
         {
@@ -76,7 +76,7 @@ public sealed class SqliteStorageManager : IStorageManager, IDisposable
 
         // A full path is never read as a SQLite URI.
         _dbPath = isMemory ? _memoryPath : Path.GetFullPath(dbPath);
-        _maxBlobBytes = maxBlobBytes;
+        _limits = limits;
 
         if (!isMemory)
         {
@@ -89,11 +89,22 @@ public sealed class SqliteStorageManager : IStorageManager, IDisposable
             _sessionLock = SessionLock.Acquire(LockPath(_dbPath));
         }
 
+        var existed = !isMemory && File.Exists(_dbPath) && new FileInfo(_dbPath).Length > 0;
         _conn = OpenConnection(mustExist, journalMode);
         try
         {
+
+            // Check the file before any query that could run its triggers or views, and before any row is read.
+            SqliteSchema.Verify(_conn);
+            if (existed)
+            {
+                QuickCheck();
+            }
+
             SqliteSchema.Ensure(_conn);
-            EventBackend = new SqliteEventBackend(_conn, _dbLock, logger ?? NullLogger.Instance, maxBlobBytes);
+            var backend = new SqliteEventBackend(_conn, _dbLock, logger ?? NullLogger.Instance, _limits);
+            backend.EnforceLimits();
+            EventBackend = backend;
         }
         catch
         {
@@ -149,9 +160,9 @@ public sealed class SqliteStorageManager : IStorageManager, IDisposable
     {
         ArgumentNullException.ThrowIfNull(data);
         var size = System.Text.Encoding.UTF8.GetByteCount(data);
-        if (size > _maxBlobBytes)
+        if (size > _limits.MaxBlobBytes)
         {
-            throw new ArgumentException($"Snapshot is {size} bytes, above the limit of {_maxBlobBytes} bytes.", nameof(data));
+            throw new ArgumentException($"Snapshot is {size} bytes, above the limit of {_limits.MaxBlobBytes} bytes.", nameof(data));
         }
 
         RequireJsonObject(data, msg => new ArgumentException(msg, nameof(data)));
@@ -181,7 +192,7 @@ public sealed class SqliteStorageManager : IStorageManager, IDisposable
 
             // The blob is read only when it is within the limit.
             command.CommandText =
-                $"SELECT CASE WHEN length(CAST(data AS BLOB)) <= {_maxBlobBytes.ToString(CultureInfo.InvariantCulture)} THEN data END, " +
+                $"SELECT CASE WHEN length(CAST(data AS BLOB)) <= {_limits.MaxBlobBytes.ToString(CultureInfo.InvariantCulture)} THEN data END, " +
                 "length(CAST(data AS BLOB)) FROM snapshots WHERE snapshot_id = @id";
             command.Parameters.AddWithValue("@id", snapshotId);
             using var reader = command.ExecuteReader();
@@ -196,7 +207,7 @@ public sealed class SqliteStorageManager : IStorageManager, IDisposable
 
         if (data is null)
         {
-            throw new DeserializationException($"Snapshot '{snapshotId}' is {size} bytes, above the limit of {_maxBlobBytes} bytes.");
+            throw new DeserializationException($"Snapshot '{snapshotId}' is {size} bytes, above the limit of {_limits.MaxBlobBytes} bytes.");
         }
 
         RequireJsonObject(data, msg => new DeserializationException($"Snapshot '{snapshotId}': {msg}"));
@@ -288,6 +299,11 @@ public sealed class SqliteStorageManager : IStorageManager, IDisposable
         {
             conn.Open();
 
+            // Never run schema-level SQL (triggers, views, generated columns) that the file defines, and refuse
+            // changes to the schema through SQL text.
+            Pragma(conn, "trusted_schema=OFF");
+            SQLitePCL.raw.sqlite3_db_config(conn.Handle, _dbConfigDefensive, 1, out _);
+
             // Retry up to 5 s on SQLITE_BUSY before an error.
             Pragma(conn, "busy_timeout=5000");
             Pragma(conn, journalMode == SqliteJournalMode.Delete ? "journal_mode=DELETE" : "journal_mode=WAL");
@@ -300,6 +316,20 @@ public sealed class SqliteStorageManager : IStorageManager, IDisposable
         {
             conn.Dispose();
             throw;
+        }
+    }
+
+    // SQLITE_DBCONFIG_DEFENSIVE
+    private const int _dbConfigDefensive = 1010;
+
+    private void QuickCheck()
+    {
+        using var command = _conn.CreateCommand();
+        command.CommandText = "PRAGMA quick_check(1)";
+        var result = Convert.ToString(command.ExecuteScalar(), CultureInfo.InvariantCulture);
+        if (result != "ok")
+        {
+            throw new CorruptDatabaseException($"The database failed the integrity check: {result}", new InvalidDataException(result));
         }
     }
 

@@ -30,10 +30,12 @@ internal sealed class SessionLock : IDisposable
     /// <summary>Takes the lock and writes the owner record. Throws <see cref="SessionAlreadyActiveException"/> if it is held.</summary>
     public static SessionLock Acquire(string lockPath)
     {
+        RefuseLink(lockPath);
+        RefuseLink(lockPath + ".guard");
         FileStream guard;
         try
         {
-            guard = new FileStream(lockPath + ".guard", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
+            guard = new FileStream(lockPath + ".guard", Options(FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None));
         }
         catch (IOException)
         {
@@ -104,9 +106,33 @@ internal sealed class SessionLock : IDisposable
         _guard.Dispose();
     }
 
+    // The record cannot go through the guard handle: the guard is locked against other readers (see the type summary).
+    // A link is refused so that the write cannot overwrite a file that the link points at. The check and the open are
+    // not atomic. A lock path in a directory that only the user can write closes the gap.
     private static void WriteRecord(string path, byte[] record)
     {
-        using var stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
+        RefuseLink(path);
+        using var stream = new FileStream(path, Options(FileMode.Create, FileAccess.Write, FileShare.ReadWrite));
         stream.Write(record);
+    }
+
+    private static void RefuseLink(string path)
+    {
+        if (new FileInfo(path).LinkTarget is not null)
+        {
+            throw new UnauthorizedAccessException($"The session lock path '{path}' is a symbolic link. It is refused.");
+        }
+    }
+
+    private static FileStreamOptions Options(FileMode mode, FileAccess access, FileShare share)
+    {
+        var options = new FileStreamOptions { Mode = mode, Access = access, Share = share };
+        if (!OperatingSystem.IsWindows())
+        {
+            // Only the current user may read or write a lock file that this program creates.
+            options.UnixCreateMode = UnixFileMode.UserRead | UnixFileMode.UserWrite;
+        }
+
+        return options;
     }
 }

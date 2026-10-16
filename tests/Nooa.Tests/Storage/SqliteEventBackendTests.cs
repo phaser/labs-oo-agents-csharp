@@ -207,7 +207,7 @@ public class SqliteEventBackendTests : IEventBackendTests
     [Fact]
     public void Get_RowAboveBlobLimit_Throws()
     {
-        using var small = new SqliteStorageManager(_dir.File("small.db"), maxBlobBytes: 400);
+        using var small = new SqliteStorageManager(_dir.File("small.db"), limits: new StorageLimits { MaxBlobBytes = 400 });
         small.EventBackend.Store("1", User(new string('x', 100)));
         small.EventBackend.Store("2", User(new string('y', 600)));
 

@@ -28,16 +28,16 @@ public sealed class SqliteEventBackend : IEventBackend
     private readonly SqliteConnection _conn;
     private readonly Lock _lock;
     private readonly ILogger _logger;
-    private readonly long _maxBlobBytes;
+    private readonly StorageLimits _limits;
     private long _insertionCounter;
     private long _nextTagNum;
 
-    internal SqliteEventBackend(SqliteConnection conn, Lock lockObject, ILogger logger, long maxBlobBytes)
+    internal SqliteEventBackend(SqliteConnection conn, Lock lockObject, ILogger logger, StorageLimits limits)
     {
         _conn = conn;
         _lock = lockObject;
         _logger = logger;
-        _maxBlobBytes = maxBlobBytes;
+        _limits = limits;
         _insertionCounter = MaxInsertionOrder() + 1;
         _nextTagNum = MaxTagNum() + 1;
     }
@@ -181,16 +181,93 @@ public sealed class SqliteEventBackend : IEventBackend
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Rows are read in pages and deserialized one by one, outside the lock. The row count and the total size are checked
+    /// while reading, so a large file cannot fill memory. A limit that is exceeded throws <see cref="DeserializationException"/>.
+    /// </remarks>
     public IEnumerable<EventBase> AllEvents()
     {
-        // Read the rows under the lock, then deserialize outside it, so that slow deserialization does not hold the lock.
-        List<object?[]> rows;
+        long lastOrder = long.MinValue;
+        long lastRowId = long.MinValue;
+        long count = 0;
+        long bytes = 0;
+        while (true)
+        {
+            List<object?[]> page;
+            lock (_lock)
+            {
+                page = Guarded("AllEvents()", [], () => ReadPage(lastOrder, lastRowId));
+            }
+
+            if (page.Count == 0)
+            {
+                yield break;
+            }
+
+            foreach (var row in page)
+            {
+                count++;
+                bytes += row[1] is long size ? size : 0;
+                CheckTotals(count, bytes, "AllEvents()");
+                lastOrder = (long)row[2]!;
+                lastRowId = (long)row[3]!;
+                if (DeserializeRow(row, "AllEvents()") is { } found)
+                {
+                    yield return found;
+                }
+            }
+        }
+    }
+
+    /// <summary>Throws if the stored events are over the count or total size limit. It reads sizes only, not data.</summary>
+    internal void EnforceLimits()
+    {
         lock (_lock)
         {
-            rows = Guarded("AllEvents()", [], () => Query(BlobSelect("ORDER BY insertion_order")));
+            var row = Query("SELECT COUNT(*), COALESCE(SUM(length(CAST(data AS BLOB))), 0) FROM events")[0];
+            CheckTotals((long)row[0]!, (long)row[1]!, "Open");
+        }
+    }
+
+    private void CheckTotals(long count, long bytes, string context)
+    {
+        if (count > _limits.MaxEventCount)
+        {
+            throw new DeserializationException($"{context}: the database has more than {_limits.MaxEventCount} events.");
         }
 
-        return DeserializeRows(rows);
+        if (bytes > _limits.MaxTotalEventBytes)
+        {
+            throw new DeserializationException($"{context}: the event data is above the limit of {_limits.MaxTotalEventBytes} bytes.");
+        }
+    }
+
+    // One page of rows after the given position. The page stops at the page byte budget, so memory stays bounded.
+    private List<object?[]> ReadPage(long afterOrder, long afterRowId)
+    {
+        using var command = Command(
+            BlobSelect($"ORDER BY insertion_order, rowid LIMIT {StorageLimits.PageRows}", "WHERE (insertion_order, rowid) > (@order, @rowid)"),
+            [("@order", afterOrder), ("@rowid", afterRowId)]);
+        using var reader = command.ExecuteReader();
+        var rows = new List<object?[]>();
+        long pageBytes = 0;
+        while (reader.Read())
+        {
+            var row = new object?[reader.FieldCount];
+            for (var i = 0; i < row.Length; i++)
+            {
+                row[i] = reader.IsDBNull(i) ? null : ReadValue(reader, i);
+            }
+
+            rows.Add(row);
+            pageBytes += row[1] is long size ? size : 0;
+            if (pageBytes >= StorageLimits.PageBytes)
+            {
+                break;
+            }
+        }
+
+        return rows;
     }
 
     /// <inheritdoc />
@@ -249,8 +326,8 @@ public sealed class SqliteEventBackend : IEventBackend
 
     // The row blob is read only when it is within the limit, so an oversized row is never loaded into memory.
     private string BlobSelect(string tail, string where = "") =>
-        $"SELECT CASE WHEN length(CAST(data AS BLOB)) <= {_maxBlobBytes.ToString(CultureInfo.InvariantCulture)} THEN data END, " +
-        $"length(CAST(data AS BLOB)) FROM events {where} {tail}";
+        $"SELECT CASE WHEN length(CAST(data AS BLOB)) <= {_limits.MaxBlobBytes.ToString(CultureInfo.InvariantCulture)} THEN data END, " +
+        $"length(CAST(data AS BLOB)), insertion_order, rowid FROM events {where} {tail}";
 
     private long MaxInsertionOrder() =>
         Guarded("MaxInsertionOrder()", -1L, () => Query("SELECT MAX(insertion_order) FROM events")[0][0] is long max ? max : -1L);
@@ -283,10 +360,10 @@ public sealed class SqliteEventBackend : IEventBackend
         if (row[0] is not string data)
         {
             var size = row[1] is long length ? length : -1;
-            if (size > _maxBlobBytes)
+            if (size > _limits.MaxBlobBytes)
             {
                 throw new DeserializationException(
-                    $"{context}: stored event is {size} bytes, above the limit of {_maxBlobBytes} bytes.");
+                    $"{context}: stored event is {size} bytes, above the limit of {_limits.MaxBlobBytes} bytes.");
             }
 
             _logger.LogWarning("{Context}: skipping corrupt event data (not text)", context);

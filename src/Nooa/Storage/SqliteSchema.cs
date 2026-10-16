@@ -4,6 +4,7 @@
 // Ported from: src/nooa/storage/sqlite.py
 
 using Microsoft.Data.Sqlite;
+using Nooa.Errors;
 
 namespace Nooa.Storage;
 
@@ -52,6 +53,46 @@ internal static class SqliteSchema
         "database disk image is malformed",
         "file is not a database",
     ];
+
+    /// <summary>
+    /// Refuses a database that holds any object other than the expected tables and indexes. An untrusted file can carry
+    /// triggers, views or changed table definitions that run when this program queries or writes. Every object that exists
+    /// must match the object that the DDL creates in an empty database. A missing object is allowed: <see cref="Ensure"/> creates it.
+    /// </summary>
+    public static void Verify(SqliteConnection conn)
+    {
+        using var reference = new SqliteConnection("Data Source=:memory:");
+        reference.Open();
+        using (var create = reference.CreateCommand())
+        {
+            create.CommandText = _ddl;
+            create.ExecuteNonQuery();
+        }
+
+        var allowed = ReadObjects(reference);
+        foreach (var (name, found) in ReadObjects(conn))
+        {
+            if (!allowed.TryGetValue(name, out var want) || want != found)
+            {
+                throw new StorageSchemaException(
+                    $"The database holds an unexpected {found.Type} '{name}'. The file is not a Nooa session database or was changed.");
+            }
+        }
+    }
+
+    private static Dictionary<string, (string Type, string Table, string? Sql)> ReadObjects(SqliteConnection conn)
+    {
+        using var command = conn.CreateCommand();
+        command.CommandText = "SELECT name, type, tbl_name, sql FROM sqlite_master";
+        using var reader = command.ExecuteReader();
+        var objects = new Dictionary<string, (string, string, string?)>();
+        while (reader.Read())
+        {
+            objects[reader.GetString(0)] = (reader.GetString(1), reader.GetString(2), reader.IsDBNull(3) ? null : reader.GetString(3));
+        }
+
+        return objects;
+    }
 
     /// <summary>Creates the tables if needed and checks the schema version. A newer or older file needs a migration.</summary>
     public static void Ensure(SqliteConnection conn)

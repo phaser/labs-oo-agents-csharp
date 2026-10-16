@@ -63,4 +63,42 @@ public class SessionLockTests : IDisposable
 
         Assert.Equal((pid, host), SessionLock.ReadOwner(_dir.File("s.lock")));
     }
+
+    [Fact]
+    public void Acquire_SymlinkedGuard_IsRefusedAndTargetKept()
+    {
+        var target = _dir.File("victim.txt");
+        File.WriteAllText(target, "keep");
+        File.CreateSymbolicLink(_dir.File("s.lock.guard"), target);
+
+        Assert.Throws<UnauthorizedAccessException>(() => SessionLock.Acquire(_dir.File("s.lock")));
+
+        Assert.Equal("keep", File.ReadAllText(target));
+    }
+
+    [Fact]
+    public void Acquire_SymlinkedRecord_IsRefusedAndTargetKept()
+    {
+        var target = _dir.File("victim.txt");
+        File.WriteAllText(target, "keep");
+        File.CreateSymbolicLink(_dir.File("s.lock"), target);
+
+        Assert.Throws<UnauthorizedAccessException>(() => SessionLock.Acquire(_dir.File("s.lock")));
+
+        Assert.Equal("keep", File.ReadAllText(target));
+    }
+
+    [Fact]
+    public void Acquire_CreatesFilesReadableOnlyByTheUser()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        using var held = SessionLock.Acquire(_dir.File("s.lock"));
+
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(_dir.File("s.lock")));
+        Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite, File.GetUnixFileMode(_dir.File("s.lock.guard")));
+    }
 }
