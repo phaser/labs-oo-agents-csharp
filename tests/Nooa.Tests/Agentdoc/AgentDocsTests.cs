@@ -49,6 +49,12 @@ public class AgentDocsTests
         public int ValueB;
     }
 
+    private sealed class Shelf
+    {
+        public List<int> Items = [1, 2, 3, 4, 5];
+        public string Label = new('x', 80);
+    }
+
     private sealed class Warehouse
     {
         public string Name { get; set; } = "Main";
@@ -136,6 +142,14 @@ public class AgentDocsTests
         Assert.Contains("string Computed { get; }", result);
         Assert.DoesNotContain("Computed { get; } =", result);
         Assert.DoesNotContain("secret", result);
+    }
+
+    [Fact]
+    public void Doc_Instance_CutsLongValuesWithMarkers()
+    {
+        var result = AgentDocs.Doc(new Shelf(), inlineDepth: 0);
+        Assert.Contains("List<int> Items = List<int>(len=5, [:2]=[1, 2], [-1:]=[5]);", result);
+        Assert.Contains("string Label = string(len=80, [:25]=", result);
     }
 
     [Fact]
@@ -267,7 +281,7 @@ public class AgentDocsTests
     }
 
     [Fact]
-    public void Doc_NonCustomInstance_UsesValuePreview()
+    public void Doc_NonCustomInstance_UsesPFormat()
     {
         Assert.Equal("\"hi\"", AgentDocs.Doc("hi"));
     }
