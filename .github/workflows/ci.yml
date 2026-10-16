@@ -43,5 +43,4 @@ jobs:
         run: dotnet format Nooa.slnx --verify-no-changes --no-restore
 
       - name: Test
-        # --ignore-exit-code 8 ("zero tests ran") is temporary: tests/Nooa.Generators.Tests has no tests until T11, which removes it.
-        run: dotnet test --solution Nooa.slnx --configuration Release --no-build --filter "Category!=Live" --ignore-exit-code 8
+        run: dotnet test --solution Nooa.slnx --configuration Release --no-build --filter "Category!=Live"

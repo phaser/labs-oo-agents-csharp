@@ -57,6 +57,22 @@
 - Hostile SQLite file: `PRAGMA trusted_schema=OFF`, `SQLitePCL.raw.sqlite3_db_config(conn.Handle, 1010, 1, out _)` (DEFENSIVE), then compare `sqlite_master` with a reference in-memory database built from the same DDL. Stored SQL text drops `IF NOT EXISTS`.
 - Keyset paging with a row value works in SQLite: `WHERE (insertion_order, rowid) > (@o, @r) ORDER BY insertion_order, rowid LIMIT n`. Stop reading a `SqliteDataReader` early to bound the page memory.
 
+## Source generators (T11)
+
+- Roslyn 5.3 analyzers build with SDK 10.0.301 without CS9057. RS2008 needs `AnalyzerReleases.Shipped.md` and `.Unshipped.md` as `AdditionalFiles`, or every `DiagnosticDescriptor` fails the build.
+- netstandard2.0 generator: add an internal `IsExternalInit` polyfill for records. `ImplicitUsings` stays off. Models must hold no `ISymbol`, `Compilation` or `Location`. Use records with an `EquatableArray<T>`, and `LocationInfo`, so caching works.
+- A `///` comment on the same line after `{` is trailing trivia of `{`, not leading trivia of the next member. Doc readers and test snippets must put it on its own line.
+- Without `GenerateDocumentationFile` the `///` lines are plain `SingleLineCommentTrivia`. Read them as text and parse the XML yourself.
+- `U+2028` and `U+0085` end a `//` comment in C#. A doc comment cannot hold them.
+- `SymbolDisplay.FormatLiteral(text, quote: true)` escapes quotes, backslashes and line separators. Use it for every string that goes into emitted code.
+- A partial method keeps its metadata order at the declaration site. `MetadataToken` order is still source order after the generator adds the body.
+- Match reflection members from generated code by `MetadataToken` (unique per module). `ParameterInfo` and `MemberInfo` equality depends on the reflected type.
+- `[ModuleInitializer]` needs a method that is `internal` or `public` in a type that is reachable. A private nested agent class cannot be called from it.
+- Test a generator in memory: `CSharpGeneratorDriver` with `trackIncrementalGeneratorSteps: true`, compile and load the output with `Assembly.Load(bytes)`. Check caching through `TrackedOutputSteps` reasons.
+- A generator test host needs the trusted platform assemblies (`AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")`) plus the `Nooa` assembly as references.
+- File-scoped `namespace` must come first: add helper types as a separate syntax tree, not by string concatenation.
+- xUnit v3 analyzer xUnit1051 requires `TestContext.Current.CancellationToken` in test methods that call token-taking APIs.
+
 ## Value printing (T06)
 
 - A one-line attempt that nests inside another doubles the work at every level (render for the width check, then render again). Write the attempt into a writer that reports overflow at the line width, and let a nested container write straight into that writer. Then a deep structure costs about depth squared.
