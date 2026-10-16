@@ -40,3 +40,5 @@ Upstream (pin in the plan):
 ## Notes
 
 Not a security boundary (D12). Document this in the README and in the type's XML doc.
+
+From T07 (storage): `storage/persistent_vars.py` and `storage/snapshot_vars.py` (REPL variables in snapshots) belong here. Store them through `IStorageManager.SaveSnapshotJson`. Values are JSON only (D11).

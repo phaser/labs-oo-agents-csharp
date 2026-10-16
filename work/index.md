@@ -18,7 +18,7 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 | [T04 Event IR and LlmResponse](6-event-ir.md) | [#6](https://github.com/phaser/labs-oo-agents-csharp/pull/6) | — | merged | 2026-10-16 |
 | [T05 Agentdoc renderer: Doc()](5-agentdoc-renderer.md) | [#5](https://github.com/phaser/labs-oo-agents-csharp/pull/5) | — | merged | 2026-10-16 |
 | [T06 Agentdoc PFormat() and truncation](t06-agentdoc-pformat.md) | — | — | todo | 2026-10-16 |
-| [T07 Storage: in-memory and SQLite](t07-storage.md) | — | — | todo | 2026-10-16 |
+| [T07 Storage: in-memory and SQLite](t07-storage.md) | — | — | open | 2026-10-16 |
 
 ## M2 — LLM layer
 
