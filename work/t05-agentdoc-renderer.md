@@ -3,7 +3,7 @@ pr:
 pr_url:
 jira:
 epic: M1
-status: todo
+status: open
 created: 2026-10-16
 updated: 2026-10-16
 tags: []
@@ -23,13 +23,19 @@ Upstream (pin in the plan):
 
 ## Progress
 
-- [ ] Read type metadata by reflection (`NullabilityInfoContext` for nullable)
-- [ ] Read doc comment text from generator-emitted metadata (T11 provides it; use a stub provider until then)
-- [ ] Respect `[Hidden]` and private members; source order for methods
-- [ ] Render C# signatures (not Python) in the output
-- [ ] Port `spec()` / `Annotated` parameter descriptions as `[Description]`
-- [ ] Port tests from `tests/agentdoc/` that cover `doc()`; list skipped ones in porting-notes
+- [x] Read type metadata by reflection (`NullabilityInfoContext` for nullable)
+- [x] Read doc comment text through `IAgentDocProvider` (T11 supplies the generated one; reflection fallback and a fake in tests)
+- [x] Respect `[Hidden]` and private members; source order for methods
+- [x] Render C# signatures (not Python) in the output
+- [x] Port `Annotated` descriptions as `[Description]` (fields, properties, parameters, return value); `spec()` is not ported
+- [x] Port tests from `tests/agentdoc/` that cover `doc()`; list skipped ones in the T06 task file
 
 ## Notes
 
 Output format changes from Python to C# syntax. Record the format in porting-notes.
+
+- Format and deviations: `docs/porting-notes.md`, section "`doc()` rendering".
+- Public API: `AgentDocs.Doc`, `IAgentDocProvider`, `ReflectionDocProvider`, `AgentDocProviders` (registry, `Register` returns a disposable), `[Hidden]` in `Nooa`.
+- Value printing: `ValuePreview` (internal) is the only place that prints values. T06 replaces it.
+- No new NuGet package.
+- Skipped upstream tests (pformat, truncation, Python-only features): see `work/t06-agentdoc-pformat.md`.

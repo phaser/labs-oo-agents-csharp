@@ -121,3 +121,47 @@ Env var names stay as upstream (`NEMO_OO_USER_DIR`, `NEMO_OO_PROJECT_DIR`, `NEMO
 - **Not ported:** `Reasoning` (legacy, nothing emits it), `TuiSessionResumed`, `TuiSessionCleared` (TUI is outside v1), `DecisionCallStart`, `DecisionCallEnd`, `DecisionRecord` (decisions are B03), `ExecutionResult`, `ExecutionSignal` (REPL: T15), `CODEACT_INLINE_RETURN` (T17), `EventStatus`-independent `Event` union aliases.
 - **Timestamp:** `DateTimeOffset.Now` (upstream: naive local `datetime`).
 **Tests:** ported from `tests/context_blocks/test_events.py`, `tests/test_events.py` (event types, summary, `PythonOutput` fields), `tests/unifiedllm/test_llm_types.py` (usage), `test_llm_response_event.py` (durable fields), `test_replay_copy_ownership.py` (metadata ownership). Skipped: `test_event_auto_registration.py`, `test_event_types.py` alias and `EventManager` parts (registry, EventManager: T18/T07), `ExecutionResult` tests (T15), pformat and privacy tests (`test_response_display_privacy.py`: T06/T13), `FakeLLMClient` alias test (T08).
+
+## `doc()` rendering (agentdoc, T05)
+
+**C#:** `AgentDocs.Doc(obj | objs, concise, inlineDepth, provider)` in `Nooa.Agentdoc`. The object is a `Type`, a `MethodInfo` or an instance.
+Output is C# declaration text. A type shows `///` summary lines, a header (`class`, `record`, `struct`, `enum`, `interface`, `static class`, `abstract class`, and ` : Base` for a custom base type),
+then fields and properties, a blank line, and methods. Fields and properties are public instance members, base type first.
+Methods are public (instance and `static`), derived type first. Members of `System` base types are left out.
+`Description` text shows as a `// text` comment after a field. With no description, the first line of the field type summary is used.
+A method shows its summary, then `Args:` and `Returns:` lines (from parameter and return descriptions), then the signature.
+Referenced types follow under `## Referenced Types`, in concise form, sorted by name, each type once (`inlineDepth` levels, default 1).
+A standalone method shows its type name (`Warehouse.CanFulfillOrder`). Instance values are shown for fields and auto-properties. Computed properties are never evaluated.
+
+```
+/// Checks stock.
+class Warehouse
+{
+    int Count = 7;  // Items in stock
+    string Name { get; set; } = "East";
+
+    /// Check if the order can be filled.
+    /// Args:
+    ///   budget: Maximum price
+    Task<OrderResult> CanFulfillOrder(List<string> items, double budget);
+    static Warehouse Create(int size = 5, string? label = null);
+}
+
+## Referenced Types
+
+class OrderResult
+{
+    bool Ok;
+}
+```
+
+**Why:** the prompt shows C# to a model that writes C#. Nullable annotations come from `NullabilityInfoContext`. Unconstrained type parameters never get `?` (reflection reports them as nullable).
+**Deviations:**
+- Source order: reflection has none. `MetadataToken` order approximates it within one type. Fields come before properties. Members of partial types in several files can order differently.
+- Hidden members: `[Hidden]` (root namespace `Nooa`) replaces `hidden` and `spec(hidden=True)`. `_`-prefixed and non-public members are excluded. There is no `spec(hidden=False)` opt-in, so the upstream "child unhides parent field" tests do not apply.
+- Defaults: upstream shows source defaults of fields. Reflection cannot read field initializers, so a type shows no field defaults. An instance shows its current values. Parameter defaults show.
+- Descriptions: `[Description]` replaces `Annotated[T, "desc"]` and `spec(description=...)`. Doc comment text comes from `IAgentDocProvider` (see T11).
+- Value text: a placeholder in `ValuePreview` prints values until T06.
+- Not ported: `spec(expand=False)`, `spec.define_doc` and the registry, `DocConfig`, `methods()`, `variables()`, module docs, adapters, protocols, extra runtime attributes (C# types have fixed members), `max_length`/`max_string`/`max_depth` limits (T06).
+**Tests:** ported in `AgentDocsTests`, `MemberReaderTests`, `ReferencedTypesTests`, `DocFormatterTests`. The rest are listed in `work/t06-agentdoc-pformat.md`.
+
