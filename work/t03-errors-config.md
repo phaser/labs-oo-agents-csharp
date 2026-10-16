@@ -28,6 +28,7 @@ Upstream (pin in the plan):
 
 ## Progress
 
+- [ ] Remove `--ignore-exit-code 8` from `.github/workflows/ci.yml` (added in T02 while no tests exist)
 - [ ] Port `NemoOOAgentsError` hierarchy to `Nooa.Errors`
 - [ ] Port `errors/formatting.py` (error text with cell line numbers)
 - [ ] Port `ExecutionConfig`, `TruncationConfig` (merge rules), `CodeActConfig`, `PredictConfig` as records

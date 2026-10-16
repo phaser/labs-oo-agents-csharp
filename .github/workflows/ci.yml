@@ -1,0 +1,46 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: License headers
+        run: scripts/check-license-headers.sh
+
+      - name: Restore
+        run: dotnet restore Nooa.slnx
+
+      - name: Build
+        run: dotnet build Nooa.slnx --configuration Release --no-restore
+
+      - name: Format
+        run: dotnet format Nooa.slnx --verify-no-changes --no-restore
+
+      - name: Test
+        # --ignore-exit-code 8 ("zero tests ran") is temporary: T03 adds the first tests and removes it.
+        run: dotnet test --solution Nooa.slnx --configuration Release --no-build --filter "Category!=Live" --ignore-exit-code 8

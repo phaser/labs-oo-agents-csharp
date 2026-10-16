@@ -11,10 +11,7 @@ Status: accepted direction, 2026-10-16. Tracker: [`work/index.md`](../work/index
 | Size | ~320k lines of Python in 1,499 files. Core `src/nooa` is ~95k lines; `tests/` is ~160k lines. |
 | License | Apache 2.0 |
 
-```bash
-git clone https://github.com/NVIDIA-NeMo/labs-OO-Agents reference
-git -C reference checkout 1454b78c8f0a85c97eab1c6a91cc8cfc95b34de5
-```
+Run `scripts/clone-reference.sh` to get the checkout. The script holds the pin.
 
 Moving the pin is a deliberate task. It gets its own tracker item and a diff review of upstream changes.
 
@@ -111,7 +108,7 @@ The REPL uses `Microsoft.CodeAnalysis.CSharp.Scripting`, which is a large depend
 | `Microsoft.Data.Sqlite` | SQLite storage |
 | `YamlDotNet` | Layered config, model registry |
 | `OpenTelemetry`, `OpenTelemetry.Exporter.OpenTelemetryProtocol` | Tracing export |
-| `xunit`, `Verify.SourceGenerators` | Tests |
+| `xunit.v3` (Microsoft.Testing.Platform), `Verify.SourceGenerators` | Tests |
 
 Each dependency is license-checked when its task adds it.
 
