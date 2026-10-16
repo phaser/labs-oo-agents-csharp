@@ -91,3 +91,10 @@
 - `AIFunctionDeclaration` can be subclassed (`Name`, `Description`, `JsonSchema`, `AdditionalProperties`) to carry a ready JSON schema.
 - xUnit v3 analyzer xUnit1051: pass `TestContext.Current.CancellationToken` to every method with a token. `Assert.Skip(reason)` skips a test at run time (use it for `Live` tests without environment variables).
 - Model output is untrusted input for `Regex`: use a `matchTimeoutMilliseconds` argument on `[GeneratedRegex]` and treat a `RegexMatchTimeoutException` as a parse failure.
+
+## Model registry (T10)
+
+- YamlDotNet with `WithAttemptingUnquotedStringTypeDeserialization` returns the smallest fitting integral type (`Int16`, `Int32`, ...), and `double` for decimals. Convert numbers by value (`Convert.ToInt64` after an integral check), never with `is int`.
+- Trust for a layered config file lives in `LayerTrust.IsTrusted(path, fileName, envVar)`. Use it for every new layered file kind. A project-layer file must not replace a trusted entry, and must not combine a key variable with a custom host.
+- `ChatOptions.Reasoning = new ReasoningOptions { Effort = ReasoningEffort.High }` reaches the OpenAI wire as `reasoning_effort`. A test checks the body.
+- A test that needs a trusted layer writes to the user dir. The project dir is untrusted.

@@ -56,4 +56,49 @@ public sealed class LlmConfigTests : IDisposable
 
         Assert.Contains(LlmConfig.EnvVar, logger.Text);
     }
+
+    [Fact]
+    public void Chain_EnvEntriesWithWhitespace_AreTrimmedAndEmptyOnesIgnored()
+    {
+        var env = Path.Combine(_dirs.Root, "e.yaml");
+        TempConfigDirs.Write(env, "models: {}\n");
+        Environment.SetEnvironmentVariable(LlmConfig.EnvVar, $" , {env} , ,");
+
+        Assert.Equal([NooaPaths.Canonicalize(env)], LlmConfig.Chain());
+    }
+
+    [Fact]
+    public void Chain_UserPathRepeatedInEnv_KeepsTheHigherPosition()
+    {
+        var user = Path.Combine(_dirs.UserDir, LlmConfig.FileName);
+        var other = Path.Combine(_dirs.Root, "other.yaml");
+        TempConfigDirs.Write(user, "models: {}\n");
+        TempConfigDirs.Write(other, "models: {}\n");
+        Environment.SetEnvironmentVariable(LlmConfig.EnvVar, $"{user},{other}");
+
+        Assert.Equal(new[] { user, other }.Select(NooaPaths.Canonicalize), LlmConfig.Chain());
+    }
+
+    [Fact]
+    public void Chain_EnvDuplicateEntries_CollapseToTheLast()
+    {
+        var a = Path.Combine(_dirs.Root, "a.yaml");
+        var b = Path.Combine(_dirs.Root, "b.yaml");
+        TempConfigDirs.Write(a, "models: {}\n");
+        TempConfigDirs.Write(b, "models: {}\n");
+        Environment.SetEnvironmentVariable(LlmConfig.EnvVar, $"{a},{b},{a}");
+
+        Assert.Equal(new[] { b, a }.Select(NooaPaths.Canonicalize), LlmConfig.Chain());
+    }
+
+    [Fact]
+    public void Chain_SymbolicLinkToEnvFile_Collapses()
+    {
+        var target = Path.Combine(_dirs.Root, "target.yaml");
+        TempConfigDirs.Write(target, "models: {}\n");
+        File.CreateSymbolicLink(Path.Combine(_dirs.UserDir, LlmConfig.FileName), target);
+        Environment.SetEnvironmentVariable(LlmConfig.EnvVar, target);
+
+        Assert.Equal([NooaPaths.Canonicalize(target)], LlmConfig.Chain());
+    }
 }

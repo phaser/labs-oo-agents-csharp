@@ -63,7 +63,7 @@ public static partial class Secrets
                 continue;
             }
 
-            var untrusted = !IsTrustedLayer(path);
+            var untrusted = !LayerTrust.IsTrusted(path, FileName, EnvVar);
             foreach (var (name, value) in envMap)
             {
                 if (!EnvNameRegex().IsMatch(name))
@@ -119,24 +119,6 @@ public static partial class Secrets
         }
 
         return applied;
-    }
-
-    /// <summary>
-    /// Fails closed: a file is trusted only when it is the user-layer file, or a <c>NEMO_OO_SECRETS</c> path that lies
-    /// outside the project directory and the project root. The user-layer file is trusted even when the project root
-    /// contains the user directory. Paths compare with the platform rule in <see cref="NooaPaths.PathComparison"/>.
-    /// </summary>
-    private static bool IsTrustedLayer(string canonicalPath)
-    {
-        if (NooaPaths.PathEquals(canonicalPath, NooaPaths.Canonicalize(NooaPaths.GetUserDir(FileName))))
-        {
-            return true;
-        }
-
-        var fromEnv = LayeredConfig.EnvPaths(EnvVar).Any(p => NooaPaths.PathEquals(canonicalPath, NooaPaths.Canonicalize(p)));
-        return fromEnv
-            && !NooaPaths.IsInside(canonicalPath, NooaPaths.Canonicalize(NooaPaths.GetProjectDir()))
-            && !NooaPaths.IsInside(canonicalPath, NooaPaths.Canonicalize(NooaPaths.FindProjectRoot()));
     }
 
     /// <summary>
