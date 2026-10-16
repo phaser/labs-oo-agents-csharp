@@ -34,4 +34,6 @@ Upstream (pin in the plan):
 
 ## Notes
 
+From T04 (event IR): render `TaskEvent` under the name `Task`. Apply the "Not shown to the model" and "must not truncate" rules in the XML docs of the event properties, and suppress empty values (keep `0` and `false`). Port `LlmResponse.render_message` and `searchable_fields` (public values only, no native state). See `docs/porting-notes.md`, "Event IR".
+
 `Context.expr` (a re-evaluated expression) waits for T18 because it needs the REPL evaluator.
