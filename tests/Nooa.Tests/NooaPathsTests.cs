@@ -100,4 +100,29 @@ public sealed class NooaPathsTests : IDisposable
 
         Assert.EndsWith(Path.Combine("nope", "x.yaml"), NooaPaths.Canonicalize(missing));
     }
+
+    [Fact]
+    public void PathEquals_DifferentCase_FollowsPlatformRule()
+    {
+        var caseInsensitive = OperatingSystem.IsMacOS() || OperatingSystem.IsWindows();
+
+        Assert.Equal(caseInsensitive, NooaPaths.PathEquals("/a/Secrets.yaml", "/a/secrets.yaml"));
+    }
+
+    [Fact]
+    public void IsInside_DifferentCase_FollowsPlatformRule()
+    {
+        var caseInsensitive = OperatingSystem.IsMacOS() || OperatingSystem.IsWindows();
+        var sep = Path.DirectorySeparatorChar;
+
+        Assert.Equal(caseInsensitive, NooaPaths.IsInside($"{sep}Proj{sep}x.yaml", $"{sep}proj"));
+    }
+
+    [Fact]
+    public void IsInside_SiblingWithSamePrefix_IsFalse()
+    {
+        var sep = Path.DirectorySeparatorChar;
+
+        Assert.False(NooaPaths.IsInside($"{sep}project2{sep}x.yaml", $"{sep}project"));
+    }
 }

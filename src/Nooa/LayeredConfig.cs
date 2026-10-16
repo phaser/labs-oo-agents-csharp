@@ -265,7 +265,7 @@ public static class LayeredConfig
         }
     }
 
-    private static IEnumerable<string> EnvPaths(string envVar)
+    internal static IEnumerable<string> EnvPaths(string envVar)
     {
         var raw = Environment.GetEnvironmentVariable(envVar)?.Trim();
         if (string.IsNullOrEmpty(raw))
