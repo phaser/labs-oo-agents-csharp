@@ -33,7 +33,7 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
-| [T11 Source generator for agents](t11-source-generator.md) | — | — | todo | 2026-10-16 |
+| [T11 Source generator for agents](12-source-generator.md) | [#12](https://github.com/phaser/labs-oo-agents-csharp/pull/12) | — | merged | 2026-10-16 |
 | [T12 Agent base, ActorRuntime, method wrapper](t12-agent-runtime.md) | — | — | todo | 2026-10-16 |
 | [T13 Context blocks renderer](t13-context-renderer.md) | — | — | todo | 2026-10-16 |
 | [T14 Template and Predict strategies](t14-template-predict.md) | — | — | todo | 2026-10-16 |

@@ -8,10 +8,20 @@
 
   <ItemGroup>
     <PackageReference Include="xunit.v3" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="../../src/Nooa.Generators/AnalyzerReleases.Unshipped.md" Link="AnalyzerReleases.Unshipped.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../src/Nooa.Generators/Nooa.Generators.csproj" />
+    <ProjectReference Include="../../src/Nooa/Nooa.csproj" />
   </ItemGroup>
 
 </Project>
