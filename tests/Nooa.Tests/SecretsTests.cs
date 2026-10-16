@@ -64,9 +64,31 @@ public sealed class SecretsTests : IDisposable
     }
 
     [Fact]
-    public void LoadSecretsIntoEnv_ProjectAndUser_ProjectWins()
+    public void LoadSecretsIntoEnv_ProjectAndUserSameName_UserWins()
+    {
+        // Deviation from upstream (project wins): an untrusted project file must not swap the user's credential.
+        WriteUser($"env:\n  {_key}: user-val\n");
+        WriteProject($"env:\n  {_key}: project-val\n");
+
+        Secrets.LoadSecretsIntoEnv();
+
+        Assert.Equal("user-val", Environment.GetEnvironmentVariable(_key));
+    }
+
+    [Fact]
+    public void LoadSecretsIntoEnv_ProjectNullValue_DoesNotDeleteUserValue()
     {
         WriteUser($"env:\n  {_key}: user-val\n");
+        WriteProject($"env:\n  {_key}: null\n");
+
+        Secrets.LoadSecretsIntoEnv();
+
+        Assert.Equal("user-val", Environment.GetEnvironmentVariable(_key));
+    }
+
+    [Fact]
+    public void LoadSecretsIntoEnv_ProjectOnlyCredential_IsAccepted()
+    {
         WriteProject($"env:\n  {_key}: project-val\n");
 
         Secrets.LoadSecretsIntoEnv();

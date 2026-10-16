@@ -80,6 +80,23 @@ public static class NooaPaths
     }
 
     /// <summary>
+    /// String comparison for file paths on this platform: case-insensitive on macOS and Windows, case-sensitive elsewhere.
+    /// </summary>
+    /// <remarks>
+    /// The default macOS and Windows file systems ignore case, so a case-sensitive comparison there can call two
+    /// spellings of one file different.
+    /// </remarks>
+    public static StringComparison PathComparison { get; } =
+        OperatingSystem.IsMacOS() || OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+
+    /// <summary>Returns true when <paramref name="path"/> lies strictly inside <paramref name="directory"/>. Both must be canonical.</summary>
+    public static bool IsInside(string path, string directory) =>
+        path.StartsWith(directory.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, PathComparison);
+
+    /// <summary>Returns true when two canonical paths name the same file on this platform.</summary>
+    public static bool PathEquals(string left, string right) => string.Equals(left, right, PathComparison);
+
+    /// <summary>
     /// Returns the absolute path with every symbolic link resolved, in every path component.
     /// A path that does not exist is resolved as far as it exists.
     /// </summary>

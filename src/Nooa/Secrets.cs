@@ -39,14 +39,17 @@ public static partial class Secrets
     /// </summary>
     /// <remarks>
     /// A name that is already set in the process is left alone: the shell value wins. A null value is skipped.
-    /// Project-layer files (inside the project root) are untrusted: they can set only credential-shaped names.
-    /// Bundled and user layers use the name check and the denylist only.
+    /// A layer is trusted only when it is positively identified: the user-layer file, or a <c>NEMO_OO_SECRETS</c> path
+    /// outside the project. Every other file (the project layer included) is untrusted. An untrusted layer can set only
+    /// credential-shaped names, cannot replace or delete a name that a trusted layer set, and cannot delete any name.
+    /// Trusted layers use the name check and the denylist only.
     /// Other values are converted to text. The call is safe to repeat.
     /// </remarks>
     /// <returns>The names that this call set, that is, the names that were missing.</returns>
     public static IReadOnlyList<string> LoadSecretsIntoEnv(ILogger? logger = null)
     {
         var accepted = new Dictionary<string, object?>();
+        var setByTrusted = new HashSet<string>(StringComparer.Ordinal);
         foreach (var (path, data) in LayeredConfig.LoadLayers(FileName, EnvVar, logger: logger))
         {
             if (!data.TryGetValue("env", out var envValue) || envValue is null)
@@ -60,7 +63,7 @@ public static partial class Secrets
                 continue;
             }
 
-            var untrusted = IsProjectLayer(path);
+            var untrusted = !IsTrustedLayer(path);
             foreach (var (name, value) in envMap)
             {
                 if (!EnvNameRegex().IsMatch(name))
@@ -75,13 +78,29 @@ public static partial class Secrets
                 {
                     logger?.LogWarning("secrets.yaml env name {Name} is refused in a project-layer file: only credential names (*_API_KEY, *_KEY, *_TOKEN, *_SECRET, *_PASSWORD) are accepted", name);
                 }
+                else if (untrusted && setByTrusted.Contains(name))
+                {
+                    logger?.LogWarning("secrets.yaml env name {Name} in an untrusted file cannot replace the value from a trusted layer; ignoring", name);
+                }
                 else if (value is null)
                 {
-                    accepted.Remove(name);
+                    if (untrusted)
+                    {
+                        logger?.LogWarning("secrets.yaml env name {Name}: an untrusted file cannot delete a value; ignoring", name);
+                    }
+                    else
+                    {
+                        accepted.Remove(name);
+                        setByTrusted.Remove(name);
+                    }
                 }
                 else
                 {
                     accepted[name] = value;
+                    if (!untrusted)
+                    {
+                        setByTrusted.Add(name);
+                    }
                 }
             }
         }
@@ -103,23 +122,22 @@ public static partial class Secrets
     }
 
     /// <summary>
-    /// A file is untrusted (project layer) when it is the project-layer file or lies inside the project directory or project root.
-    /// The user-layer file is always trusted, even when the project root contains the user directory.
+    /// Fails closed: a file is trusted only when it is the user-layer file, or a <c>NEMO_OO_SECRETS</c> path that lies
+    /// outside the project directory and the project root. The user-layer file is trusted even when the project root
+    /// contains the user directory. Paths compare with the platform rule in <see cref="NooaPaths.PathComparison"/>.
     /// </summary>
-    private static bool IsProjectLayer(string canonicalPath)
+    private static bool IsTrustedLayer(string canonicalPath)
     {
-        if (canonicalPath == NooaPaths.Canonicalize(NooaPaths.GetUserDir(FileName)))
+        if (NooaPaths.PathEquals(canonicalPath, NooaPaths.Canonicalize(NooaPaths.GetUserDir(FileName))))
         {
-            return false;
+            return true;
         }
 
-        return canonicalPath == NooaPaths.Canonicalize(NooaPaths.GetProjectDir(FileName))
-            || IsInside(canonicalPath, NooaPaths.Canonicalize(NooaPaths.GetProjectDir()))
-            || IsInside(canonicalPath, NooaPaths.Canonicalize(NooaPaths.FindProjectRoot()));
+        var fromEnv = LayeredConfig.EnvPaths(EnvVar).Any(p => NooaPaths.PathEquals(canonicalPath, NooaPaths.Canonicalize(p)));
+        return fromEnv
+            && !NooaPaths.IsInside(canonicalPath, NooaPaths.Canonicalize(NooaPaths.GetProjectDir()))
+            && !NooaPaths.IsInside(canonicalPath, NooaPaths.Canonicalize(NooaPaths.FindProjectRoot()));
     }
-
-    private static bool IsInside(string path, string directory) =>
-        path.StartsWith(directory.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.Ordinal);
 
     /// <summary>
     /// Saves one credential atomically with owner-only permissions.
