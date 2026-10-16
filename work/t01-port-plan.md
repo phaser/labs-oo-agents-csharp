@@ -3,7 +3,7 @@ pr:
 pr_url:
 jira:
 epic: M0
-status: todo
+status: open
 created: 2026-10-16
 updated: 2026-10-16
 tags: [plan]
@@ -21,17 +21,22 @@ Upstream HEAD at creation: [1454b78](https://github.com/NVIDIA-NeMo/labs-OO-Agen
 
 ## Progress
 
-- [ ] Pin the upstream commit; clone it into `reference/`
-- [ ] Inventory upstream: packages, modules, public API, tests, examples, dependencies
-- [ ] Map each core concept to a C# design (see open questions)
-- [ ] Choose solution layout and project names
-- [ ] Choose the model-client abstraction and the first provider
-- [ ] Define scope for v1 (core only, or core plus extras)
-- [ ] Split the work into milestones and tasks; add them to `work/`
-- [ ] Write the plan to `docs/port-plan.md`; start `docs/porting-notes.md`
-- [ ] Review the plan with Cristian
+- [x] Pin the upstream commit; clone it into `reference/`
+- [x] Inventory upstream: packages, modules, public API, tests, examples, dependencies
+- [x] Map each core concept to a C# design (see open questions)
+- [x] Choose solution layout and project names
+- [x] Choose the model-client abstraction and the first provider
+- [x] Define scope for v1 (core only, or core plus extras)
+- [x] Split the work into milestones and tasks; add them to `work/`
+- [x] Write the plan to `docs/port-plan.md`; start `docs/porting-notes.md`
+- [x] Review the plan with Cristian
 
 ## Notes
+
+Result: [`docs/port-plan.md`](../docs/port-plan.md), [`docs/porting-notes.md`](../docs/porting-notes.md), tasks T02–T22 in `work/`.
+Decisions from Cristian (2026-10-16): REPL language is C# via Roslyn (D1); v1 scope is core + quickstart 01–08 (D2).
+Analysis: four read-only agents covered core, runtime/strategies, LLM/tools/MCP, and tracing/storage/extras.
+
 
 Open questions for the plan:
 

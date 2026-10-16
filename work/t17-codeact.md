@@ -1,0 +1,40 @@
+---
+pr:
+pr_url:
+jira:
+epic: M4
+status: todo
+created: 2026-10-16
+updated: 2026-10-16
+tags: []
+wiki_refs: []
+---
+
+# T17 — CodeAct strategy and C# prompts
+
+## Context
+
+Port the default strategy: `execute_csharp` + `return_result` tool loop.
+
+Depends on: T16. Plan: [`docs/port-plan.md`](../docs/port-plan.md).
+
+Upstream (pin in the plan):
+- `src/nooa/strategies/codeact.py`
+- `src/nooa/strategies/codeact_errors.py`
+- `src/nooa/strategies/loop_guard.py`
+- `src/nooa/strategies/prefill.py`
+
+## Progress
+
+- [ ] Port the generation loop: generate → tool calls → run cell or return result; `max_iterations`, `max_retries`
+- [ ] Port `_handle_return_result` coercion: variable name, JSON string; skip the AST constructor evaluator
+- [ ] Port pre- and postconditions (`strategy_validation.py`)
+- [ ] Port `LoopGuard`
+- [ ] Port `InspectInputsPrefill`
+- [ ] Rewrite every strategy instruction and error hint for C#
+- [ ] Port quickstart 03 and 04 as offline acceptance tests
+- [ ] Port tests: CodeAct parts of `tests/strategies/`
+
+## Notes
+
+Exit check for M4.
