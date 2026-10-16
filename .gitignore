@@ -1,0 +1,19 @@
+# .NET build output
+bin/
+obj/
+**/TestResults/
+*.user
+*.suo
+
+# IDE and editor files
+.vscode/
+.idea/
+
+# Upstream Python reference checkout
+reference/
+
+# Local
+worktrees/
+.env
+.DS_Store
+*.log

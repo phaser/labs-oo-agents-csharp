@@ -1,0 +1,9 @@
+labs-oo-agents-csharp
+A C# port of NVIDIA Object Oriented Agents (NOOA).
+
+This product contains code translated from NVIDIA-NeMo/labs-OO-Agents
+(https://github.com/NVIDIA-NeMo/labs-OO-Agents), licensed under the
+Apache License, Version 2.0.
+Copyright 2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+
+The translated files were modified from the original Python sources.
