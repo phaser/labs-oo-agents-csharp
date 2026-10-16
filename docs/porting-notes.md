@@ -201,7 +201,7 @@ class OrderResult
 
 ## Agent source generator (`metaclass.py`, `decorators.py`, `ellipsis_detection.py`, `strategies/current_call.py`)
 
-**C#:** `Nooa.Generators` (incremental generator). `[Agentic]` partial methods get a body that builds a `CurrentCall` and calls `IAgenticTarget`. See `work/t11-source-generator.md` for the diagnostics `NOOA0001`-`NOOA0009`.
+**C#:** `Nooa.Generators` (incremental generator). `[Agentic]` partial methods get a body that builds a `CurrentCall` and calls `IAgenticTarget`. See `work/12-source-generator.md` for the diagnostics `NOOA0001`-`NOOA0009`.
 **Why:** C# has no metaclass, decorators or `...` bodies (decisions D3-D6).
 **Differences:**
 - `{Member.Path}` placeholders cover member paths on `this` only. Upstream `eval` also reaches method parameters and any expression. Use `{{` and `}}` for literal braces.
