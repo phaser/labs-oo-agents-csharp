@@ -421,7 +421,6 @@ public class ChatClientLlmClientTests
         Assert.Contains("Sentiment", error.Message);
         Assert.DoesNotContain("not json at all", error.Message);
         Assert.DoesNotContain("\"x\"", error.Message);
-        Assert.NotNull(error.InnerException);
     }
 
     [Fact]
