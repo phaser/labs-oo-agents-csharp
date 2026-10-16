@@ -21,6 +21,7 @@ namespace Nooa;
 /// </para>
 /// <para>
 /// Secret values never go to logs, traces or exception messages. Only variable names appear in diagnostics.
+/// Names are validated, and names in <see cref="SecretEnvDenylist"/> are refused, because a project-layer file is untrusted.
 /// </para>
 /// </remarks>
 public static partial class Secrets
@@ -58,6 +59,18 @@ public static partial class Secrets
         var applied = new List<string>();
         foreach (var (name, value) in envMap)
         {
+            if (!EnvNameRegex().IsMatch(name))
+            {
+                logger?.LogWarning("secrets.yaml env name {Name} is not a valid environment variable name; ignoring", name);
+                continue;
+            }
+
+            if (SecretEnvDenylist.IsDenied(name))
+            {
+                logger?.LogWarning("secrets.yaml env name {Name} is not allowed (loader, shell, proxy, base-URL or runtime variable); ignoring", name);
+                continue;
+            }
+
             if (value is null || Environment.GetEnvironmentVariable(name) is not null)
             {
                 // A process value wins. Never overwrite it.
@@ -85,6 +98,11 @@ public static partial class Secrets
         if (!EnvNameRegex().IsMatch(name))
         {
             throw new ArgumentException("Secret variable must be a valid environment variable name", nameof(name));
+        }
+
+        if (SecretEnvDenylist.IsDenied(name))
+        {
+            throw new ArgumentException("Secret variable name is not allowed in a secrets file", nameof(name));
         }
 
         if (string.IsNullOrEmpty(value))

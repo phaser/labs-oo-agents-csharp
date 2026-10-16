@@ -100,3 +100,11 @@ Env var names stay as upstream (`NEMO_OO_USER_DIR`, `NEMO_OO_PROJECT_DIR`, `NEMO
 - YAML scalars: unquoted `true`, `3`, `0.5` and `null` become bool, integer, floating-point and null values. Quoted scalars stay strings. This matches `yaml.safe_load`.
 - Symbolic links: `NooaPaths.Canonicalize` replaces `Path.resolve()`.
 - `write_secret_env` becomes `Secrets.WriteSecretEnv`. It raises `ArgumentException` (bad input) or `InvalidDataException` (bad file) in place of `ValueError`. File mode is 0600 on Unix.
+
+## Untrusted config files (security deviations)
+
+**C#:** Two protections that upstream does not have. A project-layer `.nooa/` directory can come from a cloned repository, so its files are untrusted.
+- `Secrets.LoadSecretsIntoEnv` validates every name (`^[A-Za-z_][A-Za-z0-9_]*$`) and refuses names in `SecretEnvDenylist` (one place): `LD_*`, `DYLD_*`, `DOTNET_*`, `COMPlus_*`, `PATH`, `BASH_ENV`, shell and runtime option variables, CA-bundle variables, `*_PROXY`, `*_BASE_URL`, `*_API_BASE`, `*_API_URL`, `*_ENDPOINT`. It logs a warning with the name, never the value. The "never override an existing variable" rule stays. `WriteSecretEnv` refuses the same names.
+- `LayeredConfig.ParseYaml` rejects YAML anchors and aliases (alias expansion can build a huge object graph) and nesting deeper than 64 levels. The check scans parser events before deserializing. `LoadLayeredYaml` skips the file with a warning that names the file, as for any bad layer. Direct callers get `InvalidDataException`.
+**Why:** an attacker file could set `OPENAI_BASE_URL` and send an existing API key to another host, or load code through `LD_PRELOAD`. A YAML alias bomb could exhaust memory.
+**Tests:** new tests in `SecretsTests` and `LayeredConfigTests`. Open item: project-layer `api_base` / `api_key_env` in `llm_config.yaml` can redirect a key too (T10).

@@ -288,4 +288,53 @@ public sealed class LayeredConfigTests : IDisposable
         Assert.Equal("user", merged["model"]);
         Assert.True(merged.ContainsKey("only_bundled"));
     }
+
+    // ── Untrusted YAML limits (deviation from upstream) ──
+
+    [Theory]
+    [InlineData("a: &x 1\nb: *x\n")]
+    [InlineData("a: &x 1\n")]
+    [InlineData("a: &x [1, 2]\nb: [*x, *x]\n")]
+    public void ParseYaml_AnchorOrAlias_Throws(string yaml)
+    {
+        Assert.Throws<InvalidDataException>(() => LayeredConfig.ParseYaml(yaml));
+    }
+
+    [Fact]
+    public void ParseYaml_BillionLaughs_IsRejectedBeforeExpansion()
+    {
+        const string Bomb = "a: &a [x, x, x, x, x, x, x, x, x]\nb: &b [*a, *a, *a, *a, *a, *a, *a, *a, *a]\nc: &c [*b, *b, *b, *b, *b, *b, *b, *b, *b]\nd: [*c, *c, *c, *c, *c, *c, *c, *c, *c]\n";
+
+        Assert.Throws<InvalidDataException>(() => LayeredConfig.ParseYaml(Bomb));
+    }
+
+    [Fact]
+    public void ParseYaml_NestingAtLimit_IsAccepted()
+    {
+        Assert.NotNull(LayeredConfig.ParseYaml(new string('[', 64) + new string(']', 64)));
+    }
+
+    [Fact]
+    public void ParseYaml_NestingPastLimit_Throws()
+    {
+        var ex = Assert.Throws<InvalidDataException>(() => LayeredConfig.ParseYaml(new string('[', 65) + new string(']', 65)));
+
+        Assert.Contains("64", ex.Message);
+    }
+
+    [Fact]
+    public void LoadLayeredYaml_FileWithAlias_IsSkippedWithWarningNamingFile()
+    {
+        var logger = new CapturingLogger();
+        TempConfigDirs.Write(Path.Combine(_dirs.UserDir, _filename), "model: foo\n");
+        var bad = Path.Combine(_dirs.ProjectDir, _filename);
+        TempConfigDirs.Write(bad, "a: &x PRIVATE\nb: *x\n");
+
+        var merged = LayeredConfig.LoadLayeredYaml(_filename, _envVar, logger: logger);
+
+        Assert.Equal(["model"], merged.Keys);
+        Assert.Contains(_filename, logger.Text);
+        Assert.Contains("are not allowed", logger.Text);
+        Assert.DoesNotContain("PRIVATE", logger.Text);
+    }
 }

@@ -6,6 +6,7 @@
 using System.Text;
 using Microsoft.Extensions.Logging;
 using YamlDotNet.Core;
+using YamlDotNet.Core.Events;
 using YamlDotNet.Serialization;
 
 namespace Nooa;
@@ -29,6 +30,9 @@ namespace Nooa;
 public static class LayeredConfig
 {
     private static readonly UTF8Encoding _strictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
+    /// <summary>Maximum nesting depth of mappings and sequences. A deeper document is rejected.</summary>
+    private const int _maxNestingDepth = 64;
 
     private static readonly IDeserializer _deserializer = new DeserializerBuilder()
         .WithAttemptingUnquotedStringTypeDeserialization()
@@ -102,7 +106,7 @@ public static class LayeredConfig
     /// Loads every layer of <paramref name="filename"/> and deep-merges them into one dictionary.
     /// </summary>
     /// <remarks>
-    /// Last wins. A null value deletes the key. A file that does not parse to a mapping is skipped with a warning,
+    /// Last wins. A null value deletes the key. A file that does not parse to a mapping, or that uses YAML anchors, aliases or nesting deeper than 64 levels, is skipped with a warning,
     /// so one bad layer does not take down the rest. Mappings become <c>Dictionary&lt;string, object?&gt;</c>,
     /// sequences become <c>List&lt;object?&gt;</c>, and unquoted scalars become bool, integer, floating-point or string values.
     /// The warning text never includes file content, because the file can hold secrets.
@@ -121,6 +125,12 @@ public static class LayeredConfig
             try
             {
                 data = ParseYaml(_strictUtf8.GetString(File.ReadAllBytes(path)));
+            }
+            catch (InvalidDataException e)
+            {
+                // The message is fixed text from this class and holds no file content.
+                logger?.LogWarning("Config file {Path} rejected: {Reason}", path, e.Message);
+                continue;
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException or DecoderFallbackException or YamlException)
             {
@@ -172,14 +182,57 @@ public static class LayeredConfig
     }
 
     /// <summary>Parses YAML text into the normalized object graph. Throws <see cref="YamlException"/> on invalid YAML.</summary>
-    internal static object? ParseYaml(string text) => Normalize(_deserializer.Deserialize<object?>(text));
-
-    private static object? Normalize(object? value) => value switch
+    /// <exception cref="InvalidDataException">The document uses anchors or aliases, or nests deeper than the limit.</exception>
+    internal static object? ParseYaml(string text)
     {
-        IDictionary<object, object?> map => map.ToDictionary(e => e.Key.ToString() ?? string.Empty, e => Normalize(e.Value)),
-        IList<object?> list => list.Select(Normalize).ToList(),
-        _ => value,
-    };
+        RejectAliasesAndDeepNesting(text);
+        return Normalize(_deserializer.Deserialize<object?>(text), 0);
+    }
+
+    /// <summary>
+    /// Scans the parser events before deserializing. Anchors and aliases are rejected because alias expansion
+    /// can grow a small file into a huge object graph (the "billion laughs" attack). Deep nesting is rejected early.
+    /// </summary>
+    private static void RejectAliasesAndDeepNesting(string text)
+    {
+        var parser = new Parser(new StringReader(text));
+        var depth = 0;
+        while (parser.MoveNext())
+        {
+            switch (parser.Current)
+            {
+                case AnchorAlias:
+                    throw new InvalidDataException("YAML aliases are not allowed in config files");
+                case NodeEvent { Anchor.IsEmpty: false }:
+                    throw new InvalidDataException("YAML anchors are not allowed in config files");
+                case MappingStart or SequenceStart:
+                    if (++depth > _maxNestingDepth)
+                    {
+                        throw new InvalidDataException($"YAML nesting is deeper than {_maxNestingDepth} levels");
+                    }
+
+                    break;
+                case MappingEnd or SequenceEnd:
+                    depth--;
+                    break;
+            }
+        }
+    }
+
+    private static object? Normalize(object? value, int depth)
+    {
+        if (depth > _maxNestingDepth)
+        {
+            throw new InvalidDataException($"YAML nesting is deeper than {_maxNestingDepth} levels");
+        }
+
+        return value switch
+        {
+            IDictionary<object, object?> map => map.ToDictionary(e => e.Key.ToString() ?? string.Empty, e => Normalize(e.Value, depth + 1)),
+            IList<object?> list => list.Select(v => Normalize(v, depth + 1)).ToList(),
+            _ => value,
+        };
+    }
 
     private static string? ResolvedIfExists(string path)
     {

@@ -35,4 +35,6 @@ Upstream (pin in the plan):
 
 ## Notes
 
+Project-layer `api_base` / `api_key_env` in llm_config.yaml can redirect a key to another host — decide a trust rule in T10.
+
 The onboarding wizard (`unifiedllm/connect/`) is out of scope.

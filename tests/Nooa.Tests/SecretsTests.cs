@@ -268,4 +268,83 @@ public sealed class SecretsTests : IDisposable
         Assert.Equal("true", Environment.GetEnvironmentVariable(_key));
         Assert.Equal("0123", Environment.GetEnvironmentVariable(_key2));
     }
+
+    // ── Untrusted file protections (deviation from upstream) ──
+
+    [Theory]
+    [InlineData("LD_PRELOAD")]
+    [InlineData("DYLD_INSERT_LIBRARIES")]
+    [InlineData("PATH")]
+    [InlineData("path")]
+    [InlineData("BASH_ENV")]
+    [InlineData("DOTNET_STARTUP_HOOKS")]
+    [InlineData("COMPlus_EnableDiagnostics")]
+    [InlineData("HTTPS_PROXY")]
+    [InlineData("OPENAI_BASE_URL")]
+    [InlineData("AZURE_OPENAI_ENDPOINT")]
+    [InlineData("ANTHROPIC_API_BASE")]
+    [InlineData("NODE_OPTIONS")]
+    public void LoadSecretsIntoEnv_DeniedName_IsRefusedAndLoggedWithoutValue(string name)
+    {
+        var logger = new CapturingLogger();
+        Environment.SetEnvironmentVariable(name, null);
+        WriteUser($"env:\n  {name}: PRIVATE-VALUE\n  {_key}: ok\n");
+
+        var applied = Secrets.LoadSecretsIntoEnv(logger);
+
+        Assert.Equal([_key], applied);
+        Assert.Null(Environment.GetEnvironmentVariable(name));
+        Assert.Contains(name, logger.Text);
+        Assert.DoesNotContain("PRIVATE", logger.Text);
+    }
+
+    [Theory]
+    [InlineData("1BAD")]
+    [InlineData("has space")]
+    [InlineData("a-b")]
+    public void LoadSecretsIntoEnv_InvalidName_IsRefused(string name)
+    {
+        var logger = new CapturingLogger();
+        WriteUser($"env:\n  \"{name}\": PRIVATE-VALUE\n");
+
+        Assert.Empty(Secrets.LoadSecretsIntoEnv(logger));
+
+        Assert.Contains("not a valid environment variable name", logger.Text);
+        Assert.DoesNotContain("PRIVATE", logger.Text);
+    }
+
+    [Fact]
+    public void LoadSecretsIntoEnv_ProjectLayerBaseUrl_DoesNotRedirectExistingKey()
+    {
+        Environment.SetEnvironmentVariable("OPENAI_API_KEY", "real-key");
+        try
+        {
+            WriteProject("env:\n  OPENAI_BASE_URL: https://attacker.example\n");
+
+            Secrets.LoadSecretsIntoEnv();
+
+            Assert.Null(Environment.GetEnvironmentVariable("OPENAI_BASE_URL"));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("OPENAI_API_KEY", null);
+        }
+    }
+
+    [Fact]
+    public void WriteSecretEnv_DeniedName_Throws()
+    {
+        var path = Path.Combine(_dirs.Root, "secrets.yaml");
+
+        Assert.Throws<ArgumentException>(() => Secrets.WriteSecretEnv(path, "LD_PRELOAD", "v"));
+        Assert.False(File.Exists(path));
+    }
+
+    [Fact]
+    public void LoadSecretsIntoEnv_AliasInSecretsFile_IsSkipped()
+    {
+        WriteUser($"env:\n  {_key}: &x PRIVATE\n  {_key2}: *x\n");
+
+        Assert.Empty(Secrets.LoadSecretsIntoEnv());
+    }
 }
