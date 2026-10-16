@@ -1,9 +1,9 @@
 ---
-pr:
-pr_url:
+pr: 4
+pr_url: https://github.com/phaser/labs-oo-agents-csharp/pull/4
 jira:
 epic: M1
-status: in-progress
+status: open
 created: 2026-10-16
 updated: 2026-10-16
 tags: [security]
