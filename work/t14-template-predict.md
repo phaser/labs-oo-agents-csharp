@@ -37,3 +37,5 @@ Upstream (pin in the plan):
 ## Notes
 
 Exit check for M3.
+
+Deferred `PredictConfig` fields from T03: `Preconditions` and `Postconditions`. Add them here as explicit-field properties (see `ConfigBase`).

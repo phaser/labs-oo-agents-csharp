@@ -33,6 +33,7 @@ Upstream (pin in the plan):
 - [ ] Emit per-type metadata for agentdoc (members in source order, doc text)
 - [ ] Diagnostics: class not partial, method not `Task`/`Task<T>`, `[Agentic]` on a generator or static method
 - [ ] Snapshot tests (Verify.SourceGenerators) and diagnostic tests
+- [ ] Remove `--ignore-exit-code 8` from `.github/workflows/ci.yml` (kept in T03 because `tests/Nooa.Generators.Tests` has no tests until this task)
 - [ ] Port the applicable cases of `test_metaclass.py`, `test_decorator_strategy.py`, `test_pure_python_method_rejection.py`
 
 ## Notes

@@ -11,6 +11,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../../src/Nooa/Nooa.csproj" />
   </ItemGroup>
 
