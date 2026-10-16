@@ -24,7 +24,7 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
-| [T08 ILlmClient and FakeLlmClient](t08-llm-client-fake.md) | — | — | todo | 2026-10-16 |
+| [T08 ILlmClient and FakeLlmClient](7-llm-client-fake.md) | [#7](https://github.com/phaser/labs-oo-agents-csharp/pull/7) | — | open | 2026-10-16 |
 | [T09 IChatClient adapter, tools, structured output, retry](t09-chatclient-adapter.md) | — | — | todo | 2026-10-16 |
 | [T10 Model registry and reasoning levels](t10-model-registry.md) | — | — | todo | 2026-10-16 |
 
