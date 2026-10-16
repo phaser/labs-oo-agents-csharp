@@ -165,3 +165,15 @@ class OrderResult
 - Not ported: `spec(expand=False)`, `spec.define_doc` and the registry, `DocConfig`, `methods()`, `variables()`, module docs, adapters, protocols, extra runtime attributes (C# types have fixed members), `max_length`/`max_string`/`max_depth` limits (T06).
 **Tests:** ported in `AgentDocsTests`, `MemberReaderTests`, `ReferencedTypesTests`, `DocFormatterTests`. The rest are listed in `work/t06-agentdoc-pformat.md`.
 
+
+## `ILlmClient`, `FakeLlmClient`, token counter (T08)
+
+**C#:** `Nooa.Llm.ILlmClient`, `LlmMessage` (`JsonMessage`, `ResponseMessage`, `CacheBoundary`), `ToolDefinition`, `FakeLlmClient`, `FakeLlmCall`, `FakeLlmResponseExhaustedException`, `TokenCounter`.
+- **Interface:** `CallAsync(messages, tools, outputType, ct)` plus `CountTokens(string)` and `ContextWindow` (the runtime needs both). No sync `call`. No per-call `**kwargs`: call settings belong to the client config (T09, T10). `FakeLlmCall.kwargs` is not ported for the same reason.
+- **Messages:** upstream passes `dict | LLMResponse | CacheBoundary`. C# uses a closed record hierarchy: `JsonMessage(JsonObject)` for OpenAI-style messages, `ResponseMessage(LlmResponse)` for a replayed response, `CacheBoundary`. `LlmMessage.User/System/Tool` build the common messages. `CacheBoundary` has no mapping view (that was for NeMo Relay JSON; use `PublicMessage()`-style projection in T13/T09 if needed).
+- **Tools:** `ToolDefinition(Name, Description, ParametersSchema)`. The upstream `Tool.callable` stays in the runtime. Schema generation (`get_parameter_schema`, `_clean_schema`) is T09/T11. `output_model` is `Type?`.
+- **Fake:** no `prepare_chat_messages` or `apply_cache_policy` pass over recorded messages (T09/T13 own message projection). `LastMessages` and `Calls[i].Messages` hold the input as given, with `JsonMessage` deep copies. Transcript response copy is a record `with` copy plus a deep metadata copy (no `model_copy(deep=True)` fallback chain). The non-copyable leaf test is skipped: records hold no such leaves.
+- **Fluent script API (new):** `Enqueue`, `EnqueueText`, `EnqueueToolCall`, `EnqueueReasoning`, `EnqueueStructured<T>`. The static factories (`SimpleMessage`, `WithToolCall`, `WithReasoning`, `WithCodeResponses`) use them, so usage numbers match upstream (text: 10 in, one out per word; tool call 10/5; reasoning 15/10). `with_tool_call` arguments are any object serialized with default `System.Text.Json` options (names are not renamed).
+- **Exhaustion:** `FakeLlmResponseExhaustedException : NooaException` (upstream `RuntimeError`). The legacy-subclass factory test is skipped (Python-only).
+- **Token counter:** `TokenCounter.CharApproximate` counts Unicode code points (runes), as Python `len` does, not UTF-16 units. `FakeLlmClient.CountTokens` is `len/4 + 1`, as upstream fake.
+- **Tests:** ported from `tests/test_llm.py` and `tests/unifiedllm/test_fake_transcript.py`. Skipped: the `FrozenInstanceError` and `MappingProxyType` mutation checks (records and read-only lists; no runtime failure to assert), the non-copyable leaf test, the legacy subclass test.
