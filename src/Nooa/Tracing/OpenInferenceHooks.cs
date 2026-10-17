@@ -22,12 +22,15 @@ namespace Nooa.Tracing;
 /// Its traced children attach to the nearest traced ancestor.
 /// </para>
 /// <para>
-/// Deviation: the code-execution, tool-execution and message-built hooks of upstream are not ported here.
-/// The hook interface has no such methods yet; T17 adds them with their callers.
+/// A TOOL span <c>code_execution</c> covers each CodeAct cell. Its parent is the generation span. The tool-execution and
+/// message-built hooks of upstream are not ported: only CodeAct calls hooks for cells (T17).
 /// </para>
 /// </remarks>
 public sealed class OpenInferenceHooks : IInstrumentationHooks
 {
+    private const int _maxCodeChars = 10_000;
+    private const int _maxOutputChars = 20_000;
+
     private readonly ConcurrentDictionary<string, Activity> _active = new();
 
     /// <inheritdoc />
@@ -115,6 +118,69 @@ public sealed class OpenInferenceHooks : IInstrumentationHooks
 
         TraceSuppression.IsActive = scope.PreviousSuppression;
         Complete(scope, result, exception, includeResultType: true);
+    }
+
+    /// <inheritdoc />
+    public object? BeforeCodeExecution(Agent agent, string methodName, string code, string toolCallId, string? generationId)
+    {
+        if (TraceSuppression.IsActive)
+        {
+            return null;
+        }
+
+        var key = "cell:" + toolCallId;
+        var span = Start("code_execution", generationId);
+        if (span is null)
+        {
+            return null;
+        }
+
+        Stamp(span, OpenInferenceAttributes.KindTool, "code");
+        SpanAttributes.Set(span, "agent.name", agent.GetType().Name);
+        SpanAttributes.Set(span, "agent.method", methodName);
+        SpanAttributes.Set(span, OpenInferenceAttributes.ToolName, "code_execution");
+        SpanAttributes.Set(span, OpenInferenceAttributes.ToolCallId, toolCallId);
+        SpanAttributes.Set(
+            span,
+            OpenInferenceAttributes.InputValue,
+            SpanAttributes.SafeJson([new("code", SpanAttributes.ScrubThenCap(code, _maxCodeChars))]));
+        SpanAttributes.Set(span, OpenInferenceAttributes.InputMimeType, OpenInferenceAttributes.MimeJson);
+        _active[key] = span;
+        return new SpanScope(span, key, PreviousSuppression: false);
+    }
+
+    /// <inheritdoc />
+    public void AfterCodeExecution(object? context, Agent agent, string methodName, CellResult result)
+    {
+        if (context is not SpanScope { Span: { } span } scope)
+        {
+            return;
+        }
+
+        _active.TryRemove(scope.Key, out _);
+        SpanAttributes.Set(span, "code.execution_count", result.ExecutionCount);
+        if (result.Status == ContextBlocks.ResultStatus.Complete)
+        {
+            span.SetStatus(ActivityStatusCode.Ok);
+        }
+        else
+        {
+            span.SetStatus(ActivityStatusCode.Error, result.Status.ToString());
+            SpanAttributes.Set(span, "error.type", result.Status == ContextBlocks.ResultStatus.Cancelled ? "Cancelled" : "CellError");
+            SpanAttributes.Set(span, "error.message", result.Error);
+        }
+
+        var output = SpanAttributes.SafeJson(
+        [
+            new("stdout", SpanAttributes.ScrubThenCap(result.Stdout, _maxOutputChars)),
+            new("stderr", SpanAttributes.ScrubThenCap(result.Stderr, _maxOutputChars)),
+            new("returned_value", Strategies.CellValues.ToJson(result.Value, new Config.FormatConfig())?.ToJsonString() is { } value
+                ? SpanAttributes.ScrubThenCap(value, _maxOutputChars)
+                : null),
+        ]);
+        SpanAttributes.Set(span, OpenInferenceAttributes.OutputValue, output);
+        SpanAttributes.Set(span, OpenInferenceAttributes.OutputMimeType, OpenInferenceAttributes.MimeJson);
+        span.Stop();
     }
 
     /// <summary>

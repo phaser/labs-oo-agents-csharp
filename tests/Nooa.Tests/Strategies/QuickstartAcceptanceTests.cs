@@ -11,8 +11,8 @@ namespace Nooa.Tests.Strategies;
 
 /// <summary>
 /// Quickstart 01 and 02 as offline tests: an agent class compiled by the generator, scripted model answers.
-/// Quickstart 01 has no strategy attribute. Upstream falls back to CodeAct, which arrives with T17, so the test
-/// sets Predict as the default strategy explicitly.
+/// Quickstart 01 has no strategy attribute. The default is CodeAct (T17), so the test
+/// sets Predict as the default strategy explicitly to keep a one-shot answer.
 /// </summary>
 public class QuickstartAcceptanceTests
 {

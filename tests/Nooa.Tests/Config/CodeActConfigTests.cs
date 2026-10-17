@@ -5,6 +5,8 @@
 
 using Nooa.Config;
 using Nooa.Errors;
+using Nooa.Runtime;
+using Nooa.Strategies;
 
 namespace Nooa.Tests.Config;
 
@@ -25,6 +27,37 @@ public class CodeActConfigTests
         Assert.Null(c.MaxToolCalls);
         Assert.False(c.TranslateToolCalls);
         Assert.Null(c.LoopGuard);
+        Assert.Equal(RestrictedApiGroup.None, c.AllowedApis);
+        Assert.IsType<InspectInputsPrefill>(c.Prefill);
+        Assert.Empty(c.Preconditions);
+        Assert.Empty(c.Postconditions);
+    }
+
+    [Fact]
+    public void MergeWith_ExplicitNullPrefillAndConditions_Overrides()
+    {
+        MethodPrecondition check = (_, _) => { };
+        var merged = new CodeActConfig().MergeWith(new CodeActConfig
+        {
+            Prefill = null,
+            Preconditions = [check],
+            AllowedApis = RestrictedApiGroup.Network,
+        });
+
+        Assert.Null(merged.Prefill);
+        Assert.Same(check, Assert.Single(merged.Preconditions));
+        Assert.Equal(RestrictedApiGroup.Network, merged.AllowedApis);
+        Assert.Empty(merged.Postconditions);
+    }
+
+    [Fact]
+    public void Validate_NullCondition_Throws()
+    {
+        var c = new CodeActConfig { Postconditions = [null!] };
+
+        var e = Assert.Throws<ConfigValidationException>(c.Validate);
+
+        Assert.Contains("Postconditions must be a list of non-null conditions", e.Message, StringComparison.Ordinal);
     }
 
     [Fact]

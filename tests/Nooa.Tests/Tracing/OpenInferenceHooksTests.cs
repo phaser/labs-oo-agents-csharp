@@ -22,6 +22,69 @@ public class OpenInferenceHooksTests
     private static string Tag(Activity span, string key) => SpanCapture.Tag(span, key);
 
     [Fact]
+    public async Task CodeActCell_EmitsAToolSpanUnderTheGenerationWithScrubbedCodeAndOutput()
+    {
+        using var capture = new SpanCapture();
+        var fake = new FakeLlmClient().EnqueueToolCall(
+            "execute_csharp", new { code = "Print(\"key sk-abcdefghijklmnopqrstuvwxyz123456\"); ReturnResult(3);" });
+        var agent = new Nooa.Tests.Strategies.CodeActAgent(
+            new AgentOptions { Llm = fake, DefaultStrategy = new Nooa.Strategies.CodeActStrategy(new Nooa.Config.CodeActConfig { Prefill = null }) });
+
+        Assert.Equal(3, await agent.AnswerAsync("q"));
+
+        var span = capture.Single("code_execution");
+        Assert.Equal("TOOL", Tag(span, "openinference.span.kind"));
+        Assert.Equal(ActivityStatusCode.Ok, span.Status);
+        Assert.Equal(capture.Single("generation").SpanId, span.ParentSpanId);
+        Assert.Contains("ReturnResult(3)", Tag(span, "input.value"), StringComparison.Ordinal);
+        Assert.DoesNotContain("abcdefghijklmnopqrstuvwxyz123456", Tag(span, "input.value"), StringComparison.Ordinal);
+        var output = JsonNode.Parse(Tag(span, "output.value"))!;
+        Assert.Equal("3", (string)output["returned_value"]!);
+        Assert.DoesNotContain("abcdefghijklmnopqrstuvwxyz123456", (string)output["stdout"]!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CodeActCell_SecretAcrossTheCodeAndOutputLimits_IsRedactedBeforeTheCut()
+    {
+        using var capture = new SpanCapture();
+        const string secret = "sk-abcdefghijklmnopqrstuvwxyz123456";
+        // Cap keeps the head of (limit - 64) / 2 characters. The secret starts 10 characters before the end of that head,
+        // in the code (limit 10 000) and in stdout (limit 20 000).
+        var code = "ReturnResult(1); // " + new string('a', (((10_000 - 64) / 2) - 10) - 20) + secret + new string('b', 6_000);
+        var stdoutHead = ((20_000 - 64) / 2) - 10;
+        var fake = new FakeLlmClient().EnqueueToolCall(
+            "execute_csharp",
+            new { code = code + "\nPrint(new string('c', " + stdoutHead + ") + \"" + secret + "\" + new string('d', 20000));" });
+        var agent = new Nooa.Tests.Strategies.CodeActAgent(
+            new AgentOptions { Llm = fake, DefaultStrategy = new Nooa.Strategies.CodeActStrategy(new Nooa.Config.CodeActConfig { Prefill = null }) });
+
+        await agent.AnswerAsync("q");
+
+        var span = capture.Single("code_execution");
+        foreach (var key in new[] { "input.value", "output.value" })
+        {
+            var text = Tag(span, key);
+            Assert.DoesNotContain("sk-abcdef", text, StringComparison.Ordinal);
+            Assert.DoesNotContain("uvwxyz123456", text, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public async Task CodeActCell_Failure_MarksTheToolSpanAsError()
+    {
+        using var capture = new SpanCapture();
+        var fake = new FakeLlmClient()
+            .EnqueueToolCall("execute_csharp", new { code = "throw new InvalidOperationException(\"x\");" }, id: "a")
+            .EnqueueToolCall("return_result", new { result = 1 }, id: "b");
+        var agent = new Nooa.Tests.Strategies.CodeActAgent(
+            new AgentOptions { Llm = fake, DefaultStrategy = new Nooa.Strategies.CodeActStrategy(new Nooa.Config.CodeActConfig { Prefill = null }) });
+
+        await agent.AnswerAsync("q");
+
+        Assert.Equal(ActivityStatusCode.Error, capture.Single("code_execution").Status);
+    }
+
+    [Fact]
     public async Task AgentCall_EmitsAnAgentSpanWithOpenInferenceAttributes()
     {
         using var capture = new SpanCapture();

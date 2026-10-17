@@ -200,3 +200,12 @@ About 260 KiB managed per cell, and the growth per 100 cells rises from 19 to 31
 - **`[GeneratedRegex]` and `NonBacktracking`:** the source generator does not support `NonBacktracking`. Use `new Regex(..., RegexOptions.NonBacktracking, timeout)` for untrusted text. `$` matches before a final `\n`; use `\z` when a value becomes a file name.
 - **JSON depth:** `JsonNode.Parse` throws `JsonException` for depth over the limit, and plain text like `[progress] ...` throws too. Scan the bracket depth first (skip string contents) to tell them apart and to redact a hostile structure whole.
 - **Suppression flag:** an `AsyncLocal<bool>` set in a sync hook flows to the later awaits of the calling async method. Save and restore the previous value so that a nested traced call does not inherit the flag.
+
+## CodeAct integration (T17)
+
+- **A compile error is not "accepted":** the T16 validator left syntax errors to the compiler and still chained the cell. The next `CreateScriptCompilation` threw `Previous submission has errors`. Unit tests with only valid cells never showed it. Run an end-to-end test with a failing cell after any chained-state change.
+- **`PFormat` enumerates a whole lazy sequence:** `PFormat.Format(Enumerable.Range(0, int.MaxValue), maxLength: 3)` does not return. Read a bounded prefix of an `IEnumerable` that is not an `ICollection` before you format a value that model code made (`CellValues`).
+- **System.Text.Json and positional records:** a missing constructor argument gives the default value, not an error. Only `required` members fail. Test "missing field" feedback with a type that has `required` members.
+- **Assistant text in `LlmMessage` lists:** a text-only reply is a `ResponseMessage`, not a `JsonMessage`. A test helper that reads prompt text must handle both.
+- **macOS temp paths:** `/var/...` is a link to `/private/var/...`. `pwd` in a shell prints the real path. Compare the last path segment in tests.
+- **Task-typed arguments show the validator value:** declaring the arguments in the validator first (`T name = default!;`) is enough to make `arg.Result` a refused blocking call.

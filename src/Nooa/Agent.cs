@@ -35,6 +35,10 @@ namespace Nooa;
 /// The last three are resolved in the constructor, so a missing LLM fails at construction. A model alias needs an
 /// <see cref="ILlmClientResolver"/>: <see cref="AgentOptions.LlmResolver"/> or <see cref="DefaultLlmResolver"/>.
 /// </para>
+/// <para>
+/// The strategy of a call comes from, in order: the call scope (<see cref="UseStrategy"/>), the method
+/// <see cref="StrategyAttribute"/>, <see cref="AgentOptions.DefaultStrategy"/>, then <see cref="CodeActStrategy"/>.
+/// </para>
 /// </remarks>
 [NoSnapshot]
 public abstract class Agent : IAgenticTarget
@@ -45,6 +49,7 @@ public abstract class Agent : IAgenticTarget
     private readonly Dictionary<Type, GenerationStrategy> _strategies = [];
     private readonly ILlmClientResolver? _llmResolver;
     private readonly GenerationStrategy? _defaultStrategy;
+    private readonly Lazy<CodeActStrategy> _codeAct = new(() => new CodeActStrategy());
     private ILlmClient _llm;
 
     /// <summary>Creates the agent: ids, storage, event manager, protected context blocks and runtime.</summary>
@@ -277,10 +282,8 @@ public abstract class Agent : IAgenticTarget
             }
         }
 
-        return _defaultStrategy
-            ?? throw new NooaRuntimeException(
-                $"No generation strategy for {call.MethodName}. Add [Strategy(typeof(...))] to the method, "
-                + "set AgentOptions.DefaultStrategy, or use Agent.UseStrategy.");
+        // The default strategy is CodeAct, as upstream. It has no state of its own, so one instance serves the agent.
+        return _defaultStrategy ?? _codeAct.Value;
     }
 
     private ILlmClient ResolveInstanceLlm(AgentOptions options)

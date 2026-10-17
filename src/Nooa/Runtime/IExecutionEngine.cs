@@ -19,6 +19,18 @@ public interface IExecutionEngine
     /// <summary>The live values of earlier cells, for <c>Out[n]</c>.</summary>
     OutAccessor Out { get; }
 
+    /// <summary>
+    /// True after a cell ignored its time limit and the engine gave it up. The session state is not safe then,
+    /// and every later call throws <see cref="InvalidOperationException"/>. The caller must end its work.
+    /// </summary>
+    bool IsAbandoned { get; }
+
+    /// <summary>Reads the current value of a variable that an earlier cell or <see cref="DeclareArgumentsAsync"/> declared.</summary>
+    /// <param name="name">The variable name.</param>
+    /// <param name="value">The value, when the variable exists.</param>
+    /// <returns>True when a variable with this name exists.</returns>
+    bool TryGetVariable(string name, out object? value);
+
     /// <summary>Declares the arguments of the current agent method as typed variables for the next cells.</summary>
     /// <exception cref="InvalidOperationException">An argument name or type cannot be declared.</exception>
     Task DeclareArgumentsAsync(IReadOnlyList<ReplArgument> arguments, CancellationToken cancellationToken = default);

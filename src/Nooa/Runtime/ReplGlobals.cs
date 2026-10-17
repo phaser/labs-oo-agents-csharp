@@ -48,9 +48,13 @@ public abstract class ReplGlobals
     public void Print(object? value) => Console.WriteLine(value);
 
     /// <summary>Writes the formatted value (see <see cref="PFormat"/>) and a line end to the standard output of the cell.</summary>
-    public void PPrint(object? value)
+    /// <param name="value">The value to format.</param>
+    /// <param name="maxLength">Maximum items per collection and members per object. Null means no limit.</param>
+    /// <param name="maxString">Maximum characters per string. Null means no limit.</param>
+    /// <param name="maxDepth">Maximum nesting depth. Null means no limit.</param>
+    public void PPrint(object? value, int? maxLength = null, int? maxString = null, int? maxDepth = null)
     {
-        PFormat.Write(Console.Out, value);
+        PFormat.Write(Console.Out, value, maxLength, maxString, maxDepth);
         Console.Out.WriteLine();
     }
 

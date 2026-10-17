@@ -106,6 +106,10 @@ internal static class SpanAttributes
         return shaped.Length <= maxChars ? shaped : JsonSerializer.Serialize(SafeSerialize(list, maxChars));
     }
 
+    /// <summary>Scrubs the whole text, then cuts it to <paramref name="maxChars"/>. A cut must never split a secret.</summary>
+    public static string ScrubThenCap(string text, int maxChars) =>
+        Cap(SecretScrubber.ScrubString(PreCap(text)).Text, maxChars);
+
     /// <summary>Returns the text unchanged when it fits, else its head and its tail with a notice.</summary>
     public static string Cap(string text, int maxChars)
     {

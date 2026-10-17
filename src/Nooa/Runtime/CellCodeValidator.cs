@@ -25,7 +25,7 @@ namespace Nooa.Runtime;
 /// </para>
 /// <para>
 /// The validator binds symbols with the semantic model, so aliases, <c>global::</c>, <c>using static</c> and full names do not bypass it.
-/// It chains the cells that it accepted, like the engine does, so a variable of an earlier cell has its real type. It cannot see the
+/// It chains the cells that it accepted and that compile, like the engine does, so a variable of an earlier cell has its real type. It cannot see the
 /// variables that the engine declares for arguments. For an unbound name it refuses the names of restricted types by their text.
 /// </para>
 /// <para>Use one validator for one engine. A validator keeps the earlier cells and is not thread-safe. The engine runs one cell at a time.</para>
@@ -75,7 +75,8 @@ public sealed class CellCodeValidator : ICellValidator
         var walker = new CellValidationWalker(model, _options, _protectedNames);
         walker.Visit(tree.GetRoot());
         var issues = walker.Issues.ToList();
-        issues.AddRange(model.GetDiagnostics()
+        var diagnostics = model.GetDiagnostics();
+        issues.AddRange(diagnostics
             .Where(d => d.Id == _unawaitedId && d.Location.IsInSource)
             .Select(UnawaitedIssue));
 
@@ -90,7 +91,12 @@ public sealed class CellCodeValidator : ICellValidator
             throw new RestrictedCodeException(Format(code, ordered), ordered[0].Line + 1);
         }
 
-        _previous = compilation;
+        // The engine does not run a cell that fails to compile, so it does not chain it. Roslyn refuses a previous
+        // submission with errors, so the validator must not chain it either.
+        if (!diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error))
+        {
+            _previous = compilation;
+        }
     }
 
     private static CellIssue UnawaitedIssue(Diagnostic diagnostic)

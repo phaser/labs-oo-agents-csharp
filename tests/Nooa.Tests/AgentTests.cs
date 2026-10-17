@@ -209,13 +209,15 @@ public class AgentTests
     }
 
     [Fact]
-    public async Task Ask_NoDefaultStrategy_ThrowsClearError()
+    public async Task Ask_NoDefaultStrategy_UsesCodeAct()
     {
-        var agent = new EchoAgent(Options(new FakeLlmClient()));
+        var fake = new FakeLlmClient().EnqueueToolCall("return_result", new { result = "done" });
+        var agent = new EchoAgent(Options(fake));
 
-        var e = await Assert.ThrowsAsync<NooaRuntimeException>(() => agent.DefaultAsync("q"));
+        var result = await agent.DefaultAsync("q");
 
-        Assert.Contains("No generation strategy for DefaultAsync", e.Message);
+        Assert.Equal("done", result);
+        Assert.Equal(["execute_csharp", "return_result"], Assert.Single(fake.Calls).Tools!.Select(t => t.Name));
     }
 
     [Fact]
