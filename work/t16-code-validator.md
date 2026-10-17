@@ -3,9 +3,9 @@ pr:
 pr_url:
 jira:
 epic: M4
-status: todo
+status: open
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-17
 tags: []
 wiki_refs: []
 ---
@@ -25,15 +25,19 @@ Upstream (pin in the plan):
 
 ## Progress
 
-- [ ] Forbid type declarations in cells
-- [ ] Forbid blocking calls: `.Result`, `.Wait()`, `Thread.Sleep`, `Task.WaitAll`
-- [ ] Require `await` on async calls (CS4014 as error)
-- [ ] Forbid recursion into the current agentic method
-- [ ] Forbid reflection / `System.Diagnostics.Process` / file APIs unless the agent opts in
-- [ ] Forbid shadowing return-type names
-- [ ] LLM-readable error messages
-- [ ] Port the applicable validator tests
+- [x] Forbid type declarations in cells
+- [x] Forbid blocking calls: `.Result`, `.Wait()`, `Thread.Sleep`, `Task.WaitAll`
+- [x] Require `await` on async calls (CS4014 as error)
+- [x] Forbid recursion into the current agentic method
+- [x] Forbid reflection / `System.Diagnostics.Process` / file APIs unless the agent opts in
+- [x] Forbid shadowing return-type names
+- [x] LLM-readable error messages
+- [x] Port the applicable validator tests
 
 ## Notes
 
-Guardrails only (D12).
+Guardrails only (D12). Decisions and deviations: `docs/porting-notes.md` section "Code validator (T16)".
+
+- Plugs into `ICellValidator`: `CellCodeValidator` (one per engine, keeps the accepted cells as a script chain).
+- Opt-in groups (`RestrictedApiGroup`): FileSystem, Network, Process, Environment, Reflection, NativeCode. Blocking calls, unawaited tasks, type declarations, recursion and return-type shadowing have no opt-out.
+- Not done: variables that the engine declares for method arguments are not visible to the validator (restricted type names are refused by text instead). The wiring of the validator into the strategy (`ForbiddenSelfCalls`, `ReturnType`) is for T17.

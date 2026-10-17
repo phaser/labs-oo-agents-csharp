@@ -47,7 +47,7 @@ public sealed class RoslynExecutionEngine : IExecutionEngine
 {
     private const string _argumentsFile = "Arguments";
 
-    private static readonly string[] _frameworkAssemblies =
+    internal static readonly string[] FrameworkAssemblies =
     [
         "System.Runtime",
         "System.Collections",
@@ -55,7 +55,7 @@ public sealed class RoslynExecutionEngine : IExecutionEngine
         "System.Text.Json",
     ];
 
-    private static readonly string[] _defaultImports =
+    internal static readonly string[] DefaultImports =
     [
         "System",
         "System.Collections.Generic",
@@ -305,7 +305,7 @@ public sealed class RoslynExecutionEngine : IExecutionEngine
     private static ScriptOptions BuildScriptOptions(ReplGlobals globals, ReplOptions options)
     {
         var directory = RuntimeEnvironment.GetRuntimeDirectory();
-        var paths = _frameworkAssemblies.Select(name => Path.Combine(directory, name + ".dll")).ToList();
+        var paths = FrameworkAssemblies.Select(name => Path.Combine(directory, name + ".dll")).ToList();
         var assemblies = new List<Assembly> { typeof(ReplGlobals).Assembly, globals.GetType().Assembly };
         assemblies.AddRange(globals.GetType().GenericTypeArguments.Select(t => t.Assembly));
         assemblies.AddRange(options.References);
@@ -321,7 +321,7 @@ public sealed class RoslynExecutionEngine : IExecutionEngine
 
         return ScriptOptions.Default
             .WithReferences(paths.Distinct(StringComparer.Ordinal).Select(p => MetadataReference.CreateFromFile(p)))
-            .WithImports(_defaultImports.Concat(options.Imports).Distinct(StringComparer.Ordinal))
+            .WithImports(DefaultImports.Concat(options.Imports).Distinct(StringComparer.Ordinal))
             .WithEmitDebugInformation(true)
             .WithFileEncoding(Encoding.UTF8)
             .WithAllowUnsafe(false);

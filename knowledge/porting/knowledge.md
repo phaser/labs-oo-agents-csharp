@@ -181,3 +181,14 @@
 | 500 | 150.2 | 332.0 | 2.5 |
 
 About 260 KiB managed per cell, and the growth per 100 cells rises from 19 to 31 MiB (each submission compilation references all earlier ones). Time is about 5 ms per cell. Script assemblies are not unloaded, so this is real retention. For a session of a few hundred cells it is acceptable. A long session needs a cell cap or a worker process (B01). Hypothesis in `hypotheses.md`: the growth is more than linear.
+
+## Roslyn validator (T16)
+
+- A script `CSharpCompilation` needs `typeof(object).Assembly` (System.Private.CoreLib) in the references. The `System.Runtime` facade alone gives CS0518 (`System.Object` not defined). The scripting engine adds it by itself.
+- `CSharpCompilation.CreateScriptCompilation(..., previousScriptCompilation, returnType, globalsType)` chains cells like `ContinueWithAsync`. A previous compilation with any error makes the next one throw `InvalidOperationException: Previous submission has errors`, so chain only accepted cells, and an elevated CS4014 counts as an error.
+- `SemanticModel.GetSymbolInfo` on the type name in `new X("a")` returns the type, not the constructor. Use `GetSymbolInfo` on the creation expression to check constructor overloads.
+- A method with a body at script top level is a `MethodDeclarationSyntax`, not a `LocalFunctionStatementSyntax`.
+- A `using` alias reference gives the target symbol from `GetSymbolInfo`, so a symbol check covers aliases. A `using static` member resolves to a method with the real containing type.
+- CS4014 is reported in a script for any unawaited task-returning call. `#pragma warning disable CS4014` hides it, so refuse that pragma.
+- `SymbolDisplayFormat(typeQualificationStyle: NameAndContainingTypesAndNamespaces)` writes `System.IO.File` and omits type arguments, which keys a deny table by original definition.
+
