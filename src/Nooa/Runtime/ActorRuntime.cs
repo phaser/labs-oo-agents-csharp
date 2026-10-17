@@ -95,7 +95,8 @@ public sealed class ActorRuntime : IRuntimeServices
             ScopedContext.CurrentEvents,
             Agent.EventQuery,
             AgentCallId,
-            Agent.Logger);
+            Agent.Logger,
+            Agent.ContextManager.Expressions);
         Agent.ContextManager.UpdateResolved(build.ResolvedCache);
 
         var budget = truncation.MaxContextTokens;

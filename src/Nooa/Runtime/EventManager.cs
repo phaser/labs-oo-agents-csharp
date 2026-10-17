@@ -268,7 +268,7 @@ public sealed class EventManager
     /// <param name="callId">The <c>call_id</c> metadata to match.</param>
     /// <param name="executionStatus">The status of a <see cref="CellOutput"/>, in wire form such as <c>error</c> or <c>complete</c>.</param>
     /// <param name="query">Text to find in the public fields. Case-insensitive.</param>
-    /// <param name="regex">Treat <paramref name="query"/> as a regular expression. It has a one second match timeout.</param>
+    /// <param name="regex">Treat <paramref name="query"/> as a regular expression. The match is case-insensitive and runs in linear time, so lookarounds and backreferences are not supported (<see cref="NotSupportedException"/>). A match that takes over one second counts as no match.</param>
     /// <param name="limit">The maximum number of results. The most recent events win.</param>
     public IReadOnlyList<EventBase> Filter(
         string? type = null,
@@ -298,8 +298,9 @@ public sealed class EventManager
         {
             if (regex)
             {
-                var pattern = new Regex(query, RegexOptions.IgnoreCase, _regexTimeout);
-                events = events.Where(e => pattern.IsMatch(EventRenderer.SearchableText(e)));
+                // The pattern can come from model code. NonBacktracking runs in linear time. A timeout is no match (fail closed).
+                var pattern = new Regex(query, RegexOptions.IgnoreCase | RegexOptions.NonBacktracking, _regexTimeout);
+                events = events.Where(e => IsMatch(pattern, EventRenderer.SearchableText(e)));
             }
             else
             {
@@ -489,6 +490,18 @@ public sealed class EventManager
     private static string Wire<TEnum>(TEnum value)
         where TEnum : struct, Enum =>
         JsonSerializer.Serialize(value, NooaJson.Options).Trim('"');
+
+    private static bool IsMatch(Regex pattern, string text)
+    {
+        try
+        {
+            return pattern.IsMatch(text);
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            return false;
+        }
+    }
 
     private static int ParseTagStart(string tag) => ParseTag(tag, 0);
 

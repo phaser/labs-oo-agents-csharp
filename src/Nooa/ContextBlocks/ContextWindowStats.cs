@@ -99,8 +99,8 @@ public sealed record ContextWindowStats
     public string Format()
     {
         const string guidance =
-            "Compact history: this.Events.Collapse(startTag, endTag, summaryText: ...); see Doc(this.Events).\n"
-            + "Add, remove, or edit context blocks: Doc(this.Context).";
+            "Compact history: self.Events.Collapse(startTag, endTag, summaryText: ...); see Doc(self.Events).\n"
+            + "Add, remove, or edit context blocks: Doc(self.Context).";
         if (PromptTokens is not { } prompt)
         {
             return "Context: awaiting first model response\n" + guidance;

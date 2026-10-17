@@ -209,3 +209,10 @@ About 260 KiB managed per cell, and the growth per 100 cells rises from 19 to 31
 - **Assistant text in `LlmMessage` lists:** a text-only reply is a `ResponseMessage`, not a `JsonMessage`. A test helper that reads prompt text must handle both.
 - **macOS temp paths:** `/var/...` is a link to `/private/var/...`. `pwd` in a shell prints the real path. Compare the last path segment in tests.
 - **Task-typed arguments show the validator value:** declaring the arguments in the validator first (`T name = default!;`) is enough to make `arg.Result` a refused blocking call.
+
+## Shared options and schema building (T18)
+
+- `AIJsonUtilities.CreateJsonSchema(type, serializerOptions: x)` sets `x.TypeInfoResolver` when it is null. If `x` was used before, that throws "read-only". Give a shared `JsonSerializerOptions` a `DefaultJsonTypeInfoResolver` at creation. The failure depends on test class order, so a new test class can expose it.
+- `CellCodeValidator` keeps accepted cells in a chain and is not thread-safe. Use a new validator for each one-shot evaluation.
+- A property on a base class can be re-declared with `new` without `[Hidden]` to opt back in: `Attribute.IsDefined(member, ..., inherit: true)` reads the derived member only.
+- `Regex` with `RegexOptions.NonBacktracking` throws `NotSupportedException` for lookarounds and backreferences, and `RegexParseException` (an `ArgumentException`) for a bad pattern.

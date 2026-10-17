@@ -17,4 +17,13 @@ public class NooaJsonTests
 
         Assert.Equal("""{"input_tokens":1,"status":"cancelled"}""", json);
     }
+
+    [Fact]
+    public void Options_HaveATypeInfoResolver_SoSchemaBuildingWorksAfterFirstUse()
+    {
+        _ = JsonSerializer.Serialize(new Sample(1, Nooa.ContextBlocks.ResultStatus.Complete), NooaJson.Options);
+
+        Assert.NotNull(NooaJson.Options.TypeInfoResolver);
+        Assert.NotNull(Nooa.Llm.ToolSchema.FromType(typeof(List<string>)));
+    }
 }

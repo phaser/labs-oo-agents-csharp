@@ -44,6 +44,7 @@ internal static class ContextBuilder
     /// <param name="agentEventQuery">The default query of the agent.</param>
     /// <param name="currentCallId">The id that <c>current</c> stands for in a query.</param>
     /// <param name="logger">Receives a warning for a provider that fails.</param>
+    /// <param name="expressions">Binds the <see cref="Context.Expr"/> blocks of the overrides. Without it such a block throws.</param>
     public static BuildResult Build(
         ContextManager contextManager,
         EventManager eventManager,
@@ -54,7 +55,8 @@ internal static class ContextBuilder
         EventQuery? scopedEventQuery = null,
         EventQuery? agentEventQuery = null,
         string? currentCallId = null,
-        ILogger? logger = null)
+        ILogger? logger = null,
+        ContextExpressions? expressions = null)
     {
         ArgumentNullException.ThrowIfNull(contextManager);
         ArgumentNullException.ThrowIfNull(eventManager);
@@ -64,12 +66,12 @@ internal static class ContextBuilder
         var disabled = contextManager.Disabled();
         if (strategy?.GetBlockOverrides() is { Count: > 0 } overrides)
         {
-            blocks = ApplyOverrides(blocks, overrides, contextBlockFormat, logger, strategy.GetStaticBlockKeys(), disabled);
+            blocks = ApplyOverrides(blocks, overrides, contextBlockFormat, logger, strategy.GetStaticBlockKeys(), disabled, expressions);
         }
 
         if (scopedContext is { Count: > 0 })
         {
-            blocks = ApplyOverrides(blocks, scopedContext, contextBlockFormat, logger, null, disabled);
+            blocks = ApplyOverrides(blocks, scopedContext, contextBlockFormat, logger, null, disabled, expressions);
         }
 
         blocks = Reorder(blocks, strategy?.GetBlockOrder());
@@ -140,7 +142,8 @@ internal static class ContextBuilder
         FormatConfig? format,
         ILogger logger,
         IReadOnlySet<string>? staticKeys,
-        IReadOnlySet<string> disabledKeys)
+        IReadOnlySet<string> disabledKeys,
+        ContextExpressions? expressions)
     {
         var index = new Dictionary<string, int>();
         for (var i = 0; i < blocks.Count; i++)
@@ -167,7 +170,10 @@ internal static class ContextBuilder
             if (value is Context context)
             {
                 prefix = context.Prefix;
-                value = context.ToDynamicContext() ?? context.Value;
+                value = context.Expression is { } expression
+                    ? new DynamicContext(
+                        (expressions ?? throw new InvalidOperationException($"The block '{key}' is an expression, but no agent evaluates it.")).Bind(expression))
+                    : context.ToDynamicContext() ?? context.Value;
             }
 
             var content = value is DynamicContext dynamic ? Resolve(key, dynamic, format, logger) : FormatValue(value, format);

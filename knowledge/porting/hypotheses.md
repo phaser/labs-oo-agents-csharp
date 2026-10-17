@@ -11,3 +11,7 @@
 ## One engine per call may be too costly (T17)
 
 CodeAct builds a Roslyn engine, a validator and metadata references for every agentic call. The first cell of a call pays the script-host warm-up (about 0.3 to 0.5 s in the tests). Measure before you cache references across calls. Confirmed 0 times.
+
+## Expression blocks may need a cached engine for long runs (T18)
+
+Each `Context.Expr` evaluation builds a Roslyn engine and validator (about 45 ms, one new assembly). An agent with several expression blocks and a long loop pays that on every turn. Measure a 50-turn run with 3 blocks before you add a cache. A cache must keep the validator and engine in step and must not share variables between blocks.
