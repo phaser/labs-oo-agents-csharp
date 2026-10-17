@@ -144,6 +144,7 @@ Each dependency is license-checked when its task adds it.
 | B12 | Memory package | `packages/nooa-memory` |
 | B13 | CLI, ACP, bench, viewer, trace explorer | `packages/*`, `viewer/`, `trace_explorer/` |
 | B14 | `PFormat` does not return on an endless lazy sequence (T17 guards the CodeAct path only) | `utils/pformat.py` |
+| B15 | Live run of quickstart 02 and 04 (Predict) on an endpoint that supports `response_format` | `quickstart/02`, `quickstart/04` |
 
 ## 5. Milestones and tasks
 

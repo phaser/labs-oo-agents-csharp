@@ -4,6 +4,7 @@
 using Nooa.Examples.Quickstart;
 using Nooa.Examples.Quickstart.Example04;
 using Nooa.Examples.Quickstart.Example06;
+using Nooa.Llm;
 using Nooa.Tracing;
 using Nooa.Util;
 
@@ -12,6 +13,8 @@ namespace Nooa.Tests.Acceptance;
 /// <summary>
 /// Runs quickstart examples 01 to 08 against a real model. This costs money.
 /// Set NVIDIA_API_KEY, OPENAI_API_KEY or NVIDIA_INFERENCE_API_KEY to run it. Without a key each test is skipped.
+/// To use another OpenAI-compatible endpoint (for example a local gateway), set NOOA_LIVE_BASE_URL, NOOA_LIVE_MODEL
+/// and NOOA_LIVE_API_KEY. These take precedence over the default route.
 /// Run only these tests with the filter Category=Live.
 /// Example 04 runs the model shell in a temporary directory. Example 06 writes its trace to a temporary directory.
 /// </summary>
@@ -31,11 +34,11 @@ public sealed class QuickstartLiveTests : IDisposable
     {
         if (!HasCredential())
         {
-            Assert.Skip("Set NVIDIA_API_KEY, OPENAI_API_KEY or NVIDIA_INFERENCE_API_KEY to run this test");
+            Assert.Skip("Set NVIDIA_API_KEY, OPENAI_API_KEY, NVIDIA_INFERENCE_API_KEY or NOOA_LIVE_* to run this test");
         }
 
         using var directory = new TempDirectory();
-        var (_, llm) = Quickstart.CreateDefaultLlm();
+        var llm = CreateLlm();
         IQuickstartExample example = number switch
         {
             4 => new StrategiesExample(directory.Path),
@@ -49,7 +52,29 @@ public sealed class QuickstartLiveTests : IDisposable
         Assert.False(string.IsNullOrWhiteSpace(output.ToString()));
     }
 
+    private static ILlmClient CreateLlm()
+    {
+        if (LiveOverride() is not { } live)
+        {
+            return Quickstart.CreateDefaultLlm().Client;
+        }
+
+        var chat = OpenAiChatClientFactory.Create(live.Model, live.BaseUrl, live.Key);
+        return new ChatClientLlmClient(chat, new ChatClientLlmOptions { Model = live.Model });
+    }
+
+    private static (string BaseUrl, string Model, string Key)? LiveOverride()
+    {
+        var baseUrl = Environment.GetEnvironmentVariable("NOOA_LIVE_BASE_URL");
+        var model = Environment.GetEnvironmentVariable("NOOA_LIVE_MODEL");
+        var key = Environment.GetEnvironmentVariable("NOOA_LIVE_API_KEY");
+        return string.IsNullOrEmpty(baseUrl) || string.IsNullOrEmpty(model) || string.IsNullOrEmpty(key)
+            ? null
+            : (baseUrl, model, key);
+    }
+
     private static bool HasCredential() =>
-        new[] { "NVIDIA_API_KEY", "OPENAI_API_KEY", "NVIDIA_INFERENCE_API_KEY", "NVIDIA_INTERNAL_API_KEY" }
+        LiveOverride() is not null
+        || new[] { "NVIDIA_API_KEY", "OPENAI_API_KEY", "NVIDIA_INFERENCE_API_KEY", "NVIDIA_INTERNAL_API_KEY" }
             .Any(name => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(name)));
 }
