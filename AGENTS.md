@@ -172,7 +172,7 @@ All development must follow this isolated PR workflow:
 
 All PR and in-progress tracking lives in `work/` at the repo root. One Markdown file per item.
 
-* **File name:** `work/<pr-number>-<short-name>.md`. Before a PR exists, key it by task id (`t01-<short-name>.md`), then rename it once the PR is opened.
+* **File name:** `work/<pr-number>-<short-name>.md`, with the PR number padded to 3 digits (`007-storage.md`), so the files sort in PR order. Before a PR exists, key it by task id (`t01-<short-name>.md`), then rename it once the PR is opened.
 * **Frontmatter:**
   ```yaml
   ---
