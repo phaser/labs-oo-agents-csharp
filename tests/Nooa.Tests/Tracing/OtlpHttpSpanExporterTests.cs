@@ -147,6 +147,35 @@ public class OtlpHttpSpanExporterTests
         fallback.Shutdown();
     }
 
+    [Fact]
+    public void Export_UnexpectedHandlerException_DropsTheBatchAndKeepsTheWorkerAlive()
+    {
+        using var capture = new SpanCapture();
+        var handler = new ThrowingOnceHandler();
+        var exporter = new OtlpHttpSpanExporter("http://localhost:5001/v1/traces", new HttpClient(handler));
+
+        exporter.Export([Span("a")], _resource);
+        Assert.True(exporter.Flush(TimeSpan.FromSeconds(10)));
+        exporter.Export([Span("a")], _resource);
+        Assert.True(exporter.Flush(TimeSpan.FromSeconds(10)));
+        exporter.Shutdown();
+
+        Assert.Equal(1, exporter.DroppedSpans);
+        Assert.Equal(2, handler.Calls);
+    }
+
+    private sealed class ThrowingOnceHandler : HttpMessageHandler
+    {
+        private int _calls;
+
+        public int Calls => Volatile.Read(ref _calls);
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Interlocked.Increment(ref _calls) == 1
+                ? throw new NotSupportedException("unexpected")
+                : Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+    }
+
     private sealed class BlockingHandler(ManualResetEventSlim gate) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)

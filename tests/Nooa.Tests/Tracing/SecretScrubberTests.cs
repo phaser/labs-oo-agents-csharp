@@ -225,8 +225,26 @@ public class SecretScrubberTests
     [InlineData("thoughtSignature", "opaque_provider_state")]
     [InlineData("agent.method_signature", null)]
     [InlineData("llm.token_count.total", null)]
+    [InlineData("apiKey", "sensitive_key")]
+    [InlineData("accessToken", "sensitive_key")]
+    [InlineData("clientSecret", "sensitive_key")]
+    [InlineData("OPENAI_APIKEY", "sensitive_key")]
+    [InlineData("userPassword", "sensitive_key")]
     public void RedactKey_ClassifiesKeys(string key, string? reason) =>
         Assert.Equal(reason, SecretScrubber.RedactKey(key));
+
+    [Theory]
+    [InlineData("token", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+    [InlineData("api_token", "short-value")]
+    [InlineData("aws_secret_access_key", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")]
+    public void ScrubValue_JsonValueThatNeedsItsKey_IsRedacted(string key, string secret)
+    {
+        var (result, count) = SecretScrubber.ScrubValue("{\"" + key + "\":\"" + secret + "\",\"note\":\"ok\"}");
+
+        Assert.DoesNotContain(secret, (string)result!, StringComparison.Ordinal);
+        Assert.Contains("\"note\":\"ok\"", (string)result!, StringComparison.Ordinal);
+        Assert.Equal(1, count);
+    }
 
     [Fact]
     public void ScrubValue_JsonObjectKeyThatIsASecret_IsRedacted()

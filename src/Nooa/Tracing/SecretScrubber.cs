@@ -40,6 +40,9 @@ public static class SecretScrubber
         "secret_key", "code_verifier", "cookie", "set_cookie",
     ];
 
+    // The same names without separators, so that camelCase and run-together keys (apiKey, accesstoken) also match.
+    private static readonly string[] _collapsedSensitiveKeys = [.. _sensitiveKeys.Select(Collapse).Distinct()];
+
     // Provider-owned replay state is not a user credential, but it has the same telemetry rule:
     // it may go back to its matching provider and nowhere else.
     private static readonly HashSet<string> _opaqueProviderStateKeys =
@@ -73,7 +76,10 @@ public static class SecretScrubber
     public static string? RedactKey(string key)
     {
         var normalized = Normalize(key);
-        if (_sensitiveKeys.Contains(normalized) || _sensitiveKeys.Any(s => normalized.EndsWith("_" + s, StringComparison.Ordinal)))
+        var collapsed = Collapse(normalized);
+        if (_sensitiveKeys.Contains(normalized)
+            || _sensitiveKeys.Any(s => normalized.EndsWith("_" + s, StringComparison.Ordinal))
+            || _collapsedSensitiveKeys.Any(s => collapsed.EndsWith(s, StringComparison.Ordinal)))
         {
             return "sensitive_key";
         }
@@ -124,9 +130,22 @@ public static class SecretScrubber
 
     /// <summary>
     /// Redacts the secrets in an attribute value. A string that holds a JSON object or array is parsed, so a value under
-    /// a credential key is replaced even when it is short. Other values pass through.
+    /// a credential key is replaced even when it is short. Other values pass through. An unexpected failure redacts the
+    /// whole value (fail closed).
     /// </summary>
     public static (object? Value, int Count) ScrubValue(object? value)
+    {
+        try
+        {
+            return ScrubValueCore(value);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            return (Redacted, 1);
+        }
+    }
+
+    private static (object? Value, int Count) ScrubValueCore(object? value)
     {
         switch (value)
         {
@@ -248,6 +267,17 @@ public static class SecretScrubber
                         // A key can carry a secret too, for example a map from token to value.
                         var (cleanKey, keyCount) = ScrubString(key);
                         var (scrubbed, n) = ScrubNode(item);
+
+                        // Some patterns need the key (token=<hex>, api_token=x). Check the pair as flat text too.
+                        if (n == 0
+                            && item is JsonValue pair
+                            && pair.TryGetValue<string>(out var raw)
+                            && ScrubString(key + "=" + raw).Count > keyCount)
+                        {
+                            scrubbed = JsonValue.Create(Redacted);
+                            n = 1;
+                        }
+
                         result[cleanKey] = scrubbed;
                         count += n + keyCount;
                     }
@@ -286,6 +316,8 @@ public static class SecretScrubber
 
     private static string Normalize(string key) =>
         Regex.Replace(key.ToLowerInvariant(), "[^a-z0-9]+", "_", RegexOptions.NonBacktracking | RegexOptions.CultureInvariant, _timeout).Trim('_');
+
+    private static string Collapse(string normalized) => normalized.Replace("_", "", StringComparison.Ordinal);
 
     private static List<string> EnvironmentSecrets()
     {

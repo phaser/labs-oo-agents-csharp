@@ -210,8 +210,9 @@ public sealed class OtlpHttpSpanExporter : ISpanExporter
                     Fail(spansOfSession.Count, $"HTTP {(int)response.StatusCode}");
                 }
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+            catch (Exception ex)
             {
+                // Any failure drops this batch only. The worker must stay alive, or every later span and Flush is lost.
                 Fail(spansOfSession.Count, ex.Message);
             }
         }
