@@ -29,6 +29,7 @@ namespace Nooa.Tracing;
 public sealed class OpenInferenceHooks : IInstrumentationHooks
 {
     private const int _maxCodeChars = 10_000;
+    private const int _maxOutputChars = 20_000;
 
     private readonly ConcurrentDictionary<string, Activity> _active = new();
 
@@ -142,7 +143,7 @@ public sealed class OpenInferenceHooks : IInstrumentationHooks
         SpanAttributes.Set(
             span,
             OpenInferenceAttributes.InputValue,
-            SpanAttributes.SafeJson([new("code", SpanAttributes.Cap(code, _maxCodeChars))]));
+            SpanAttributes.SafeJson([new("code", SpanAttributes.ScrubThenCap(code, _maxCodeChars))]));
         SpanAttributes.Set(span, OpenInferenceAttributes.InputMimeType, OpenInferenceAttributes.MimeJson);
         _active[key] = span;
         return new SpanScope(span, key, PreviousSuppression: false);
@@ -171,9 +172,11 @@ public sealed class OpenInferenceHooks : IInstrumentationHooks
 
         var output = SpanAttributes.SafeJson(
         [
-            new("stdout", result.Stdout),
-            new("stderr", result.Stderr),
-            new("returned_value", Strategies.CellValues.ToJson(result.Value, new Config.FormatConfig())?.ToJsonString()),
+            new("stdout", SpanAttributes.ScrubThenCap(result.Stdout, _maxOutputChars)),
+            new("stderr", SpanAttributes.ScrubThenCap(result.Stderr, _maxOutputChars)),
+            new("returned_value", Strategies.CellValues.ToJson(result.Value, new Config.FormatConfig())?.ToJsonString() is { } value
+                ? SpanAttributes.ScrubThenCap(value, _maxOutputChars)
+                : null),
         ]);
         SpanAttributes.Set(span, OpenInferenceAttributes.OutputValue, output);
         SpanAttributes.Set(span, OpenInferenceAttributes.OutputMimeType, OpenInferenceAttributes.MimeJson);
