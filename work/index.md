@@ -50,7 +50,7 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
-| [T18 ContextApi, EventsApi, dynamic context](t18-context-events-api.md) | — | — | open | 2026-10-17 |
+| [T18 ContextApi, EventsApi, dynamic context](24-context-events-api.md) | [#24](https://github.com/phaser/labs-oo-agents-csharp/pull/24) | — | open | 2026-10-17 |
 | [T19 Tracing](21-tracing.md) | [#21](https://github.com/phaser/labs-oo-agents-csharp/pull/21) | — | merged | 2026-10-17 |
 | [T19b Trace scrubber hardening follow-up](22-scrub-hardening.md) | [#22](https://github.com/phaser/labs-oo-agents-csharp/pull/22) | — | merged | 2026-10-17 |
 
