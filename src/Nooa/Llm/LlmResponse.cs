@@ -31,12 +31,15 @@ public sealed record LlmResponse() : EventBase(Role.Assistant)
     /// duplicates the normalized properties.
     /// </summary>
     [JsonIgnore]
+    [Hidden]
     public object? RawResponse { get; init; }
 
     /// <summary>The ordered assistant parts. Not shown to the model as parts; renderers use the projections.</summary>
+    [Hidden]
     public IReadOnlyList<AssistantPart> Parts { get; init; } = [];
 
     /// <summary>Scope in which the native state of the parts can replay. Not shown to the model.</summary>
+    [Hidden]
     public string? ReplayScope { get; init; }
 
     /// <summary>
@@ -44,24 +47,30 @@ public sealed record LlmResponse() : EventBase(Role.Assistant)
     /// (the source JSON remains in <see cref="Content"/> or in the reasoning).
     /// </summary>
     [JsonIgnore]
+    [Hidden]
     public object? Parsed { get; init; }
 
     /// <summary>NOOA-normalized outcome. Not shown to the model.</summary>
+    [Hidden]
     public FinishReason FinishReason { get; init; } = FinishReason.Stop;
 
     /// <summary>Normalized token, cache, reasoning and cost usage. Not shown to the model.</summary>
+    [Hidden]
     public LlmUsage? Usage { get; init; }
 
     /// <summary>Model identifier used for this response. Not shown to the model.</summary>
+    [Hidden]
     public string ModelName { get; init; } = "";
 
     /// <summary>Generation turn that produced this response. Not shown to the model.</summary>
+    [Hidden]
     public string GenerationId { get; init; } = "";
 
     /// <summary>
     /// Snapshot of the trailing dynamic context block in the request that produced this response,
     /// kept for session export and debugging. Not shown to the model.
     /// </summary>
+    [Hidden]
     public string DynamicContext { get; init; } = "";
 
     /// <summary>The visible text: all text parts, joined. The renderer must not truncate it.</summary>

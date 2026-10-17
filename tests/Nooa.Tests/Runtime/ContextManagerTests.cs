@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Ported from: tests/runtime/test_context_api.py (store and protection rules)
 
+using Nooa.ContextBlocks;
 using Nooa.Errors;
 using Nooa.Runtime;
 
@@ -218,5 +219,103 @@ public class ContextManagerTests
 
         Assert.True(entry.IsDynamic);
         Assert.Equal("x", entry.Provider!());
+    }
+
+    [Fact]
+    public void Set_ContextWithPrefix_GoesToTheStaticPartition()
+    {
+        var manager = new ContextManager();
+
+        manager.Set("rules", Context.Of("r", prefix: true));
+        manager.Set("status", Context.Of("s"));
+
+        Assert.True(manager.IsStatic("rules"));
+        Assert.False(manager.IsStatic("status"));
+        Assert.Equal("r", manager.Get("rules"));
+    }
+
+    [Fact]
+    public void Set_ContextWithProvider_StoresTheProviderInTheRightPartition()
+    {
+        var manager = new ContextManager();
+
+        manager.Set("a", Context.FromProvider(() => "x", prefix: true));
+        manager.Set("b", Context.FromProvider(() => "y"));
+
+        Assert.True(manager.IsStatic("a"));
+        Assert.False(manager.IsStatic("b"));
+        Assert.True(manager.RawItems().Single(p => p.Key == "a").Value.IsDynamic);
+    }
+
+    [Fact]
+    public void Set_DynamicContext_StoresAVolatileProvider()
+    {
+        var manager = new ContextManager();
+
+        manager.Set("clock", new DynamicContext(() => "now"));
+
+        Assert.True(manager.RawItems()[0].Value.IsDynamic);
+        Assert.False(manager.IsStatic("clock"));
+    }
+
+    [Fact]
+    public void ApplyOverride_PlainValueOnProtectedBlock_KeepsThePartition()
+    {
+        var manager = WithProtected();
+
+        manager.ApplyOverride("system_prompt", "custom prompt");
+        manager.ApplyOverride("state", "custom state");
+
+        Assert.Equal("custom prompt", manager.Get("system_prompt"));
+        Assert.True(manager.IsStatic("system_prompt"));
+        Assert.False(manager.IsStatic("state"));
+        Assert.True(manager.IsProtected("system_prompt"));
+    }
+
+    [Fact]
+    public void ApplyOverride_DynamicContextOnProtectedBlock_ReplacesTheProviderAndKeepsThePartition()
+    {
+        var manager = WithProtected();
+
+        manager.ApplyOverride("system_prompt", new DynamicContext(() => "computed"));
+
+        var entry = manager.RawItems().Single(p => p.Key == "system_prompt").Value;
+        Assert.Equal("computed", entry.Provider!());
+        Assert.True(entry.IsStatic);
+        Assert.True(manager.IsProtected("system_prompt"));
+    }
+
+    [Fact]
+    public void ApplyOverride_Null_DisablesProtectedBlock_AndRemovesAnUnprotectedOne()
+    {
+        var manager = WithProtected();
+        manager.Set("notes", "n");
+
+        manager.ApplyOverride("state", null);
+        manager.ApplyOverride("notes", null);
+
+        Assert.True(manager.IsDisabled("state"));
+        Assert.True(manager.Contains("state"));
+        Assert.True(manager.IsDisabled("notes"));
+        Assert.False(manager.Contains("notes"));
+    }
+
+    [Fact]
+    public void ApplyOverride_NewBlock_GoesToTheVolatilePartition()
+    {
+        var manager = new ContextManager();
+
+        manager.ApplyOverride("extra", "x");
+
+        Assert.False(manager.IsStatic("extra"));
+        Assert.Equal("x", manager.Get("extra"));
+    }
+
+    [Fact]
+    public void ApplyOverride_ContextOnProtectedBlock_IsRefusedLikeASetter()
+    {
+        var manager = WithProtected();
+
+        Assert.Throws<ProtectedBlockException>(() => manager.ApplyOverride("state", Context.Of("x")));
     }
 }

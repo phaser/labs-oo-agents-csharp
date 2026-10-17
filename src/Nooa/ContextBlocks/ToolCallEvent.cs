@@ -24,6 +24,7 @@ public sealed record ToolCallEvent() : EventBase(Role.Assistant)
     public required JsonObject Arguments { get; init; }
 
     /// <summary>The <see cref="Nooa.Llm.LlmResponse"/> event that emitted this tool call. Not shown to the model.</summary>
+    [Hidden]
     public string? LlmResponseId { get; init; }
 
     /// <summary>Result of the tool call. It is set after the tool runs.</summary>

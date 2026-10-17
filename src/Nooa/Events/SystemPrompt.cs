@@ -20,6 +20,7 @@ public sealed record SystemPrompt() : EventBase(Role.RuntimeEvent)
     /// generation when all system-role blocks are static. A change indicates that a static block was mutated mid-run.
     /// The renderer must not truncate it.
     /// </summary>
+    [MaxString]
     public string Content { get; init; } = "";
 
     /// <summary>

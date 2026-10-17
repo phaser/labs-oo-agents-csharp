@@ -6,7 +6,9 @@
 using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using Nooa.Config;
+using Nooa.ContextBlocks;
 using Nooa.Errors;
 using Nooa.Events;
 using Nooa.Json;
@@ -30,6 +32,12 @@ public sealed class ActorRuntime : IRuntimeServices
     private readonly AgentMethodInvoker _invoker;
     private readonly ConcurrentDictionary<string, int> _turns = new();
     private int? _lastPromptTokensActual;
+    private ContextWindowStats? _lastContextStats;
+
+    /// <summary>The characters-to-tokens ratio before a response calibrates it: about 4 characters per token.</summary>
+    private const double _defaultTokensPerChar = 0.25;
+
+    private double _tokensPerChar = _defaultTokensPerChar;
 
     /// <summary>Creates the runtime of an agent.</summary>
     public ActorRuntime(Agent agent)
@@ -61,6 +69,56 @@ public sealed class ActorRuntime : IRuntimeServices
 
     /// <summary>The provider-reported prompt token count of the latest generation, or null before the first response.</summary>
     public int? LastPromptTokensActual => _lastPromptTokensActual;
+
+    /// <inheritdoc />
+    public ContextWindowStats? LastContextStats => _lastContextStats;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// The context budget is <see cref="TruncationConfig.MaxContextTokens"/>. When it is not set and the model window is
+    /// known, the budget is half of the usable window (the window minus the output reserve). Token sizes are
+    /// characters times a ratio that the prompt tokens of each response calibrate.
+    /// </remarks>
+    public IReadOnlyList<LlmMessage> BuildMessages(int? maxOutputTokens = null)
+    {
+        var client = AgentContext.CurrentLlm
+            ?? throw new NooaRuntimeException("BuildMessages was called with no LLM client in context.");
+        var truncation = TruncationConfig;
+        var limits = ContextLimits.For(client, maxOutputTokens, truncation.ResponseReserveTokens);
+        var build = ContextBuilder.Build(
+            Agent.ContextManager,
+            EventManager,
+            AgentContext.CurrentStrategy,
+            truncation.ContextBlockFormat,
+            ScopedContext.CurrentBlocks,
+            EventManager.GetEventQuery(),
+            ScopedContext.CurrentEvents,
+            Agent.EventQuery,
+            AgentCallId,
+            Agent.Logger);
+        Agent.ContextManager.UpdateResolved(build.ResolvedCache);
+
+        var budget = truncation.MaxContextTokens;
+        if (budget is null && limits.ContextWindow is not null && truncation.ResponseReserveTokens > 0)
+        {
+            budget = Math.Max(0, limits.ContextWindow.Value - limits.ReservedOutputTokens) / 2;
+        }
+
+        var ratio = _tokensPerChar;
+        var result = ContextRenderer.Render(
+            build.Blocks,
+            Agent.BlockFormatter,
+            contextLimit: budget,
+            countTokens: text => (int)Math.Round(text.Length * ratio, MidpointRounding.ToEven),
+            eventFormat: truncation.EventFormat,
+            eventFormatResolver: EventFormatOf,
+            modelContextWindow: limits.ContextWindow,
+            reservedOutputTokens: limits.ReservedOutputTokens,
+            logger: Agent.Logger);
+        _lastContextStats = result.Stats with { OutputReserveIsFallback = limits.ReserveIsFallback };
+        _lastPromptTokensActual = null;
+        return result.Messages;
+    }
 
     /// <summary>Runs one agentic call through the method wrapper. <see cref="Agent"/> calls this.</summary>
     internal Task<object?> InvokeAsync(CurrentCall call, CancellationToken cancellationToken) =>
@@ -148,6 +206,15 @@ public sealed class ActorRuntime : IRuntimeServices
         if (response.Usage is { InputTokens: > 0 } usage)
         {
             _lastPromptTokensActual = usage.InputTokens;
+            if (_lastContextStats is { } stats)
+            {
+                _lastContextStats = stats with { PromptTokens = usage.InputTokens };
+                var totalChars = stats.ContextBlocksChars + stats.EventsChars;
+                if (totalChars > 0)
+                {
+                    _tokensPerChar = (double)usage.InputTokens / totalChars;
+                }
+            }
         }
 
         return new GenerateResult(response, EventManager.Add(response));
@@ -227,6 +294,33 @@ public sealed class ActorRuntime : IRuntimeServices
             AgentContext.InGenerationSession = previousSession;
             AfterGeneration(strategy, hookContext, call.MethodName, result, failure, generationId);
         }
+    }
+
+    /// <summary>
+    /// The format bounds for one event. An event that was added during a generation carries the bounds of that
+    /// generation in its metadata, so history stays the same after a session resume. Other events use the agent bounds.
+    /// Stored metadata is not trusted: bounds that do not parse or do not validate are ignored.
+    /// </summary>
+    private FormatConfig EventFormatOf(EventBase evt)
+    {
+        if (evt.Metadata["truncation_event_format"] is { } node)
+        {
+            try
+            {
+                var format = node.Deserialize<FormatConfig>(NooaJson.Options);
+                format?.Validate();
+                if (format is not null)
+                {
+                    return format;
+                }
+            }
+            catch (Exception ex) when (ex is JsonException or ConfigValidationException)
+            {
+                Agent.Logger.LogWarning(ex, "Event {EventId} has invalid stored format bounds. The agent bounds apply.", evt.Id);
+            }
+        }
+
+        return Agent.Truncation.EventFormat;
     }
 
     /// <summary>The LLM cascade of a call: call override, then method, then the agent client (instance, class, parent).</summary>

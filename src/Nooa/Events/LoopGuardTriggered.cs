@@ -17,20 +17,26 @@ public sealed record LoopGuardTriggered() : EventBase(Role.User)
     public required string Content { get; init; }
 
     /// <summary><c>blocked</c>, <c>nudged</c> or <c>stopped</c>. Not shown to the model.</summary>
+    [Hidden]
     public string Action { get; init; } = "";
 
     /// <summary>Repeated tool name. Not shown to the model.</summary>
+    [Hidden]
     public string ToolName { get; init; } = "";
 
     /// <summary>Triggering tool call identifier. Not shown to the model.</summary>
+    [Hidden]
     public string ToolCallId { get; init; } = "";
 
     /// <summary>Identical calls in the window, including this one. Not shown to the model.</summary>
+    [Hidden]
     public int Repeats { get; init; }
 
     /// <summary>Number of tool calls compared. Not shown to the model.</summary>
+    [Hidden]
     public int Window { get; init; }
 
     /// <summary>Hash of the normalized action. Not shown to the model.</summary>
+    [Hidden]
     public string Fingerprint { get; init; } = "";
 }

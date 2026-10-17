@@ -65,6 +65,7 @@ public abstract record EventBase
 
     /// <summary>The provider role this event renders as.</summary>
     [JsonIgnore]
+    [Hidden]
     public Role EventRole { get; }
 
     /// <summary>
@@ -81,17 +82,22 @@ public abstract record EventBase
     public virtual bool IsEmpty => false;
 
     /// <summary>Unique identifier. Not shown to the model.</summary>
+    [Hidden]
     public string Id { get; init; } = Guid.NewGuid().ToString();
 
     /// <summary>Arbitrary metadata, such as call_id or source. Not shown to the model.</summary>
+    [Hidden]
     public JsonObject Metadata { get; init; } = new();
 
     /// <summary>Active or archived. Not shown to the model.</summary>
+    [Hidden]
     public EventStatus Status { get; set; } = EventStatus.Active;
 
     /// <summary>Positional tag set by the event manager, such as <c>5</c> or <c>2..40</c>. Not shown to the model.</summary>
+    [Hidden]
     public string? Tag { get; set; }
 
     /// <summary>Creation time. Not shown to the model.</summary>
+    [Hidden]
     public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.Now;
 }

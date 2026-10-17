@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Nooa.Agentdoc;
 using Nooa.Config;
+using Nooa.ContextBlocks;
 using Nooa.Errors;
 using Nooa.Llm;
 using Nooa.Runtime;
@@ -77,6 +78,13 @@ public abstract class Agent : IAgenticTarget
         ContextManager.SetStaticProtected(ContextManager.SelfKey, () => AgentDocs.Doc(GetType()));
         ContextManager.SetDynamicProtected(
             ContextManager.StateKey, () => Agentdoc.PFormat.Format(this, maxLength: 50, maxString: 500, maxDepth: 4));
+        foreach (var (key, value) in options.Context ?? new Dictionary<string, object?>())
+        {
+            ContextManager.ApplyOverride(key, value);
+        }
+
+        BlockFormatter = options.BlockFormatter ?? new CachedBlockFormatter();
+        EventQuery = options.EventQuery;
         Runtime = new ActorRuntime(this);
     }
 
@@ -104,6 +112,14 @@ public abstract class Agent : IAgenticTarget
     /// <summary>The store of the context blocks, with the protected blocks <c>system_prompt</c>, <c>self</c> and <c>state</c>.</summary>
     [Hidden]
     public ContextManager ContextManager { get; }
+
+    /// <summary>Formats the context blocks into the messages of a request.</summary>
+    [Hidden]
+    public BlockFormatter BlockFormatter { get; }
+
+    /// <summary>The default filter for the events in the context, or null for all active events.</summary>
+    [Hidden]
+    public EventQuery? EventQuery { get; }
 
     /// <summary>The storage of this agent.</summary>
     [Hidden]

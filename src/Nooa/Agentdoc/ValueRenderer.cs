@@ -6,6 +6,7 @@
 using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Nodes;
 
 namespace Nooa.Agentdoc;
 
@@ -27,6 +28,7 @@ internal sealed class ValueRenderer(int? maxLength, int? maxString, int? maxDept
     /// <summary>Nesting limit when the caller sets none. It stops a very deep structure from overflowing the stack.</summary>
     private const int _hardDepthLimit = 100;
 
+    private int? _maxString = maxString;
     private readonly HashSet<object> _active = new(ReferenceEqualityComparer.Instance);
     private readonly int _depthLimit = Math.Min(maxDepth ?? int.MaxValue, _hardDepthLimit);
 
@@ -39,6 +41,11 @@ internal sealed class ValueRenderer(int? maxLength, int? maxString, int? maxDept
             return;
         }
 
+        if (value is JsonNode node)
+        {
+            value = JsonNodeValues.ToPlain(node);
+        }
+
         if (value is null)
         {
             writer.Write("null");
@@ -47,7 +54,7 @@ internal sealed class ValueRenderer(int? maxLength, int? maxString, int? maxDept
 
         if (value is string text)
         {
-            writer.Write(LiteralFormatter.String(text, maxString));
+            writer.Write(LiteralFormatter.String(text, _maxString));
             return;
         }
 
@@ -199,18 +206,27 @@ internal sealed class ValueRenderer(int? maxLength, int? maxString, int? maxDept
 
     private void WriteObject(TextWriter writer, object value, Type type, int depth)
     {
-        var members = new List<(string Name, object? Value)>();
+        var members = new List<ObjectMember>();
         foreach (var member in MemberReader.GetFields(type))
         {
             if (MemberReader.TryReadValue(member, value, out var memberValue) && memberValue is not Delegate)
             {
-                members.Add((member.Name, memberValue));
+                members.Add(new ObjectMember(member.Name, memberValue, member));
             }
         }
 
+        WriteMembers(writer, TypeNameFormatter.Format(type), members, depth);
+    }
+
+    /// <summary>
+    /// Writes <c>Name { Member = value, ... }</c>. A member with a <see cref="MaxStringAttribute"/> uses its own string
+    /// limit for its value.
+    /// </summary>
+    public void WriteMembers(TextWriter writer, string name, IReadOnlyList<ObjectMember> members, int depth)
+    {
         var truncated = maxLength is { } max && members.Count > max;
         var shown = truncated ? members.Take(maxLength!.Value) : members;
-        writer.Write(TypeNameFormatter.Format(type));
+        writer.Write(name);
         if (members.Count == 0)
         {
             writer.Write(" { }");
@@ -219,11 +235,24 @@ internal sealed class ValueRenderer(int? maxLength, int? maxString, int? maxDept
 
         writer.Write(" { ");
         var first = true;
-        foreach (var (name, memberValue) in shown)
+        foreach (var member in shown)
         {
-            writer.Write(first ? name + " = " : ", " + name + " = ");
+            writer.Write(first ? member.Name + " = " : ", " + member.Name + " = ");
             first = false;
-            Write(writer, memberValue, depth + 1);
+            var previous = _maxString;
+            if (member.Source is not null && Attribute.GetCustomAttribute(member.Source, typeof(MaxStringAttribute), inherit: true) is MaxStringAttribute limit)
+            {
+                _maxString = limit.Limit;
+            }
+
+            try
+            {
+                Write(writer, member.Value, depth + 1);
+            }
+            finally
+            {
+                _maxString = previous;
+            }
         }
 
         writer.Write(truncated ? ", ... }" : " }");
@@ -242,7 +271,7 @@ internal sealed class ValueRenderer(int? maxLength, int? maxString, int? maxDept
             return "<" + TypeNameFormatter.Format(type) + ">";
         }
 
-        return maxString is { } max && text.Length > max
+        return _maxString is { } max && text.Length > max
             ? LiteralFormatter.Marker(TypeNameFormatter.Format(type), "text_len", text, max)
             : text;
     }

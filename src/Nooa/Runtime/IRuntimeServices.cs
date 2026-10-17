@@ -4,6 +4,7 @@
 // Ported from: src/nooa/strategies/base.py
 
 using Nooa.Config;
+using Nooa.ContextBlocks;
 using Nooa.Llm;
 using Nooa.Strategies;
 
@@ -37,11 +38,22 @@ public interface IRuntimeServices
     /// <summary>The id of the parent generation session, or null at the root.</summary>
     string? ParentGenerationId { get; }
 
+    /// <summary>The context stats of the latest <see cref="BuildMessages"/>, with the prompt tokens of the latest response. Null before the first build.</summary>
+    ContextWindowStats? LastContextStats { get; }
+
+    /// <summary>
+    /// Builds the messages of a request from the context blocks and the active events. The layout comes from the
+    /// <see cref="BlockFormatter"/> of the agent: by default the static system blocks, the events, a cache boundary
+    /// and one trailing user message with the dynamic blocks. Providers of the blocks run now.
+    /// </summary>
+    /// <param name="maxOutputTokens">The reply cap of the request, or null. It sets the output reserve of the context budget.</param>
+    IReadOnlyList<LlmMessage> BuildMessages(int? maxOutputTokens = null);
+
     /// <summary>
     /// Sends one request to the effective LLM of the call and records the response as an event.
     /// Middleware for <see cref="LlmCallContext"/> wraps the round-trip.
     /// </summary>
-    /// <param name="messages">The messages of the request. The strategy builds them (see the context renderer, T13).</param>
+    /// <param name="messages">The messages of the request. Build them with <see cref="BuildMessages"/>.</param>
     /// <param name="tools">The tools that the model may call, or null.</param>
     /// <param name="outputType">The structured output type, or null.</param>
     /// <param name="cancellationToken">Cancels the call.</param>

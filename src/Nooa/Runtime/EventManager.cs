@@ -5,7 +5,6 @@
 
 using System.Globalization;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -40,8 +39,6 @@ public sealed class EventManager
 {
     private static readonly TimeSpan _regexTimeout = TimeSpan.FromSeconds(1);
 
-    private static readonly string[] _hiddenFields = ["id", "metadata", "status", "tag", "timestamp", "event_type"];
-
     private readonly Lock _gate = new();
     private readonly ILogger _logger;
     private readonly Dictionary<string, List<Action<EventBase>>> _handlers = [];
@@ -49,6 +46,7 @@ public sealed class EventManager
     private readonly List<Func<Task>> _closeCallbacks = [];
     private readonly AsyncLocal<bool> _inDrain = new();
     private IEventBackend _backend;
+    private EventQuery? _eventQuery;
     private Task? _closeTask;
 
     /// <summary>Creates an event manager.</summary>
@@ -301,16 +299,37 @@ public sealed class EventManager
             if (regex)
             {
                 var pattern = new Regex(query, RegexOptions.IgnoreCase, _regexTimeout);
-                events = events.Where(e => pattern.IsMatch(SearchableText(e)));
+                events = events.Where(e => pattern.IsMatch(EventRenderer.SearchableText(e)));
             }
             else
             {
-                events = events.Where(e => SearchableText(e).Contains(query, StringComparison.OrdinalIgnoreCase));
+                events = events.Where(e => EventRenderer.SearchableText(e).Contains(query, StringComparison.OrdinalIgnoreCase));
             }
         }
 
         var result = events.ToList();
         return limit is { } max && result.Count > max ? result[^max..] : result;
+    }
+
+    /// <summary>
+    /// Sets the run-time event query. It has the highest priority and overrides the query of a scope and of the agent.
+    /// Pass null to clear it.
+    /// </summary>
+    public void SetEventQuery(EventQuery? query)
+    {
+        lock (_gate)
+        {
+            _eventQuery = query;
+        }
+    }
+
+    /// <summary>Returns the run-time event query, or null when none is set.</summary>
+    public EventQuery? GetEventQuery()
+    {
+        lock (_gate)
+        {
+            return _eventQuery;
+        }
     }
 
     /// <summary>Returns all recorded events in insertion order, archived history included. Use it for export, not for prompts.</summary>
@@ -470,16 +489,6 @@ public sealed class EventManager
     private static string Wire<TEnum>(TEnum value)
         where TEnum : struct, Enum =>
         JsonSerializer.Serialize(value, NooaJson.Options).Trim('"');
-
-    private static string SearchableText(EventBase e)
-    {
-        var node = (JsonObject)JsonSerializer.SerializeToNode(e, typeof(EventBase), NooaJson.Options)!;
-        var parts = node
-            .Where(p => p.Value is not null && !_hiddenFields.Contains(p.Key))
-            .Select(p => p.Value is JsonValue v && v.TryGetValue<string>(out var s) ? s : p.Value!.ToJsonString())
-            .ToList();
-        return parts.Count == 0 ? e.EventType : string.Join(' ', parts);
-    }
 
     private static int ParseTagStart(string tag) => ParseTag(tag, 0);
 
