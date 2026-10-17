@@ -142,3 +142,4 @@
 - Test method with `Task.Run` or `Task.Delay` needs `TestContext.Current.CancellationToken` (xUnit1051), also in a lambda.
 - `File.GetUnixFileMode` in a test needs an `if (!OperatingSystem.IsWindows())` block around the call (CA1416); `Assert.False(IsWindows)` is not a guard.
 - `docker run mcr.microsoft.com/dotnet/sdk:10.0` runs the Linux tests locally: copy the tree without `bin`/`obj`, `apt-get install ripgrep`. `rm /usr/bin/setsid` tests the perl path.
+- Spawning `ps` to find child processes timed out under a busy parallel test run (macOS) and broke timeout recovery. `libproc` `proc_listchildpids` (DllImport, `int[]` buffer, returns the count) needs no process and no timeout.

@@ -5,13 +5,15 @@
 
 using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.InteropServices;
 
 namespace Nooa.Tools;
 
 /// <summary>Finds the descendants of a process. A timeout uses it to end one command and spare earlier background jobs.</summary>
 internal static class ProcessTree
 {
-    private static readonly TimeSpan _psTimeout = TimeSpan.FromSeconds(2);
+    private const int _maxChildren = 4096;
+    private static readonly TimeSpan _psTimeout = TimeSpan.FromSeconds(10);
 
     /// <summary>
     /// Returns the descendants of <paramref name="rootPid"/>, with the Linux start time that identifies each process.
@@ -19,6 +21,11 @@ internal static class ProcessTree
     /// </summary>
     public static async Task<Dictionary<int, string?>> SnapshotAsync(int rootPid, IReadOnlySet<int> exclude)
     {
+        if (OperatingSystem.IsMacOS() && TryWalkLibproc(rootPid, exclude) is { } walked)
+        {
+            return walked;
+        }
+
         var children = OperatingSystem.IsLinux() ? ReadProc() : await ReadPsAsync().ConfigureAwait(false);
         var result = new Dictionary<int, string?>();
         if (children is null)
@@ -55,6 +62,47 @@ internal static class ProcessTree
 
         return result;
     }
+
+    // macOS: ask the kernel for the children of each process. This starts no process, so it stays fast when the machine is busy.
+    // Returns null when libproc is not usable. The caller then falls back to ps.
+    private static Dictionary<int, string?>? TryWalkLibproc(int rootPid, IReadOnlySet<int> exclude)
+    {
+        var result = new Dictionary<int, string?>();
+        var pending = new Stack<int>();
+        pending.Push(rootPid);
+        var buffer = new int[_maxChildren];
+        try
+        {
+            while (pending.Count > 0)
+            {
+                var count = ListChildPids(pending.Pop(), buffer, buffer.Length * sizeof(int));
+                if (count < 0)
+                {
+                    return null;
+                }
+
+                foreach (var pid in buffer.Take(Math.Min(count, buffer.Length)))
+                {
+                    if (pid > 0 && !exclude.Contains(pid) && result.TryAdd(pid, null))
+                    {
+                        pending.Push(pid);
+                    }
+                }
+            }
+
+            return result;
+        }
+        catch (Exception error) when (error is DllNotFoundException or EntryPointNotFoundException)
+        {
+            return null;
+        }
+    }
+
+    // DllImport and not LibraryImport: see PosixSignals. The buffer is an array of plain integers.
+#pragma warning disable SYSLIB1054, CA5392
+    [DllImport("libproc", EntryPoint = "proc_listchildpids")]
+    private static extern int ListChildPids(int parentPid, int[] buffer, int bufferSize);
+#pragma warning restore SYSLIB1054, CA5392
 
     /// <summary>Returns the Linux start time of a process, so a signal cannot reach a process that reused the PID. Null when unknown.</summary>
     public static string? StartTime(int pid)
