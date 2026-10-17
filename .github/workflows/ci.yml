@@ -30,6 +30,10 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Install ripgrep
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then sudo apt-get update && sudo apt-get install -y --no-install-recommends ripgrep; else brew install ripgrep; fi
+
       - name: License headers
         run: scripts/check-license-headers.sh
 

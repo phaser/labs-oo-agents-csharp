@@ -57,7 +57,7 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
-| [T20 ShellTools](t20-shell-tools.md) | — | — | todo | 2026-10-16 |
+| [T20 ShellTools](t20-shell-tools.md) | — | — | open | 2026-10-17 |
 | [T21 TodoManager](15-todo-manager.md) | — | — | open | 2026-10-17 |
 
 ## M7 — Acceptance
