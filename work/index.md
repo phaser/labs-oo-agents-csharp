@@ -44,7 +44,7 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 |------|----|------|--------|---------|
 | [T15 Roslyn REPL engine](19-roslyn-repl.md) | [#19](https://github.com/phaser/labs-oo-agents-csharp/pull/19) | — | merged | 2026-10-17 |
 | [T16 Code validator for REPL cells](20-code-validator.md) | [#20](https://github.com/phaser/labs-oo-agents-csharp/pull/20) | — | merged | 2026-10-17 |
-| [T17 CodeAct strategy and C# prompts](23-codeact.md) | [#23](https://github.com/phaser/labs-oo-agents-csharp/pull/23) | — | open | 2026-10-17 |
+| [T17 CodeAct strategy and C# prompts](23-codeact.md) | [#23](https://github.com/phaser/labs-oo-agents-csharp/pull/23) | — | merged | 2026-10-17 |
 
 ## M5 — Context and tracing
 
@@ -69,4 +69,4 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 
 ## Backlog (after v1)
 
-Items B01–B13 in [`docs/port-plan.md` §4](../docs/port-plan.md#4-v1-scope). Create a tracker item when one is scheduled.
+Items B01–B14 in [`docs/port-plan.md` §4](../docs/port-plan.md#4-v1-scope). Create a tracker item when one is scheduled.
