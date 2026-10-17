@@ -360,4 +360,20 @@ public sealed class ShellToolsTests : IAsyncLifetime
     {
         Assert.Equal(_directory.Path, _shell.Cwd);
     }
+
+    [Fact]
+    public void Doc_ShowsTheToolMethodsAndHidesTheSessionAndLifecycle()
+    {
+        var doc = Nooa.Agentdoc.AgentDocs.Doc(_shell);
+
+        foreach (var name in new[] { "RunAsync", "RunStreamAsync", "ReadAsync", "ReplaceAsync", "WriteFileAsync" })
+        {
+            Assert.Contains(name, doc, StringComparison.Ordinal);
+        }
+
+        foreach (var name in new[] { "Session", "CloseAsync", "DisposeAsync" })
+        {
+            Assert.DoesNotContain(name, doc, StringComparison.Ordinal);
+        }
+    }
 }

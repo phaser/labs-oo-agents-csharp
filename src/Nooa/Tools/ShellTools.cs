@@ -56,6 +56,7 @@ public sealed partial class ShellTools : IAsyncDisposable
     public string Cwd => _cwd;
 
     /// <summary>The underlying bash session.</summary>
+    [Hidden]
     public BashSession Session => _session;
 
     /// <summary>Runs a ripgrep search and returns its standard output and exit code, or null when ripgrep is missing or the run failed. A test replaces it.</summary>
@@ -119,9 +120,11 @@ public sealed partial class ShellTools : IAsyncDisposable
     }
 
     /// <summary>Ends the shell. The next command starts a new one.</summary>
+    [Hidden]
     public Task CloseAsync() => _session.CloseAsync();
 
     /// <summary>Ends the shell for good.</summary>
+    [Hidden]
     public ValueTask DisposeAsync() => _session.DisposeAsync();
 
     /// <summary>Reads a file, or a line range, as a <see cref="Match"/>. Print the match to see numbered lines.</summary>

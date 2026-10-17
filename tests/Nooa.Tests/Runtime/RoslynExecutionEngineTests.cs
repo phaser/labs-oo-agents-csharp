@@ -347,12 +347,55 @@ public class RoslynExecutionEngineTests
             Assert.Equal(ResultStatus.Error, result.Status);
             Assert.Contains("did not stop", result.Error);
             Assert.Contains("spin", result.Stdout);
+            Assert.True(engine.IsAbandoned);
             await Assert.ThrowsAsync<InvalidOperationException>(() => Run(engine, "1"));
         }
         finally
         {
             ReplSpin.Stop = true;
         }
+    }
+
+    [Fact]
+    public async Task IsAbandoned_NormalRun_IsFalse()
+    {
+        var engine = NewEngine();
+
+        await Run(engine, "1");
+
+        Assert.False(engine.IsAbandoned);
+    }
+
+    [Fact]
+    public async Task TryGetVariable_VariableOfAnEarlierCell_ReturnsTheLatestValue()
+    {
+        var engine = NewEngine();
+        await Run(engine, "var x = 1;");
+        await Run(engine, "x = 5;");
+
+        Assert.True(engine.TryGetVariable("x", out var value));
+        Assert.Equal(5, value);
+    }
+
+    [Fact]
+    public async Task TryGetVariable_DeclaredArgument_ReturnsTheValue()
+    {
+        var engine = NewEngine();
+        await engine.DeclareArgumentsAsync([new ReplArgument("items", typeof(List<int>), new List<int> { 1, 2 })], TestContext.Current.CancellationToken);
+
+        Assert.True(engine.TryGetVariable("items", out var value));
+        Assert.Equal(new List<int> { 1, 2 }, value);
+    }
+
+    [Fact]
+    public async Task TryGetVariable_UnknownName_ReturnsFalse()
+    {
+        var engine = NewEngine();
+        await Run(engine, "var x = 1;");
+
+        Assert.False(engine.TryGetVariable("y", out var value));
+        Assert.Null(value);
+        Assert.False(NewEngine().TryGetVariable("x", out _));
     }
 
     [Fact]

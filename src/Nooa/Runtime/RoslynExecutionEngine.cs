@@ -91,6 +91,18 @@ public sealed class RoslynExecutionEngine : IExecutionEngine
     public OutAccessor Out => _globals.Out;
 
     /// <inheritdoc />
+    public bool IsAbandoned => _abandoned;
+
+    /// <inheritdoc />
+    public bool TryGetVariable(string name, out object? value)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        var variable = _state?.GetVariable(name);
+        value = variable?.Value;
+        return variable is not null;
+    }
+
+    /// <inheritdoc />
     public async Task DeclareArgumentsAsync(IReadOnlyList<ReplArgument> arguments, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(arguments);
@@ -112,8 +124,7 @@ public sealed class RoslynExecutionEngine : IExecutionEngine
                 }
 
                 var type = CSharpTypeName.Of(argument.Type);
-                var identifier = SyntaxFacts.GetKeywordKind(argument.Name) == SyntaxKind.None ? argument.Name : "@" + argument.Name;
-                source.Append($"{type} {identifier} = ({type})__args[\"{argument.Name}\"];\n");
+                source.Append($"{type} {argument.Identifier} = ({type})__args[\"{argument.Name}\"];\n");
             }
 
             _globals.__args = values;

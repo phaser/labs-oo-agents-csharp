@@ -112,6 +112,18 @@ public class CellCodeValidatorTests
     }
 
     [Fact]
+    public void Validate_CellThatDoesNotCompile_IsLeftToTheCompilerAndIsNotChained()
+    {
+        var validator = NewValidator();
+
+        validator.Validate("var broken = ;");
+        validator.Validate("var t = Task.FromResult(1);");
+        var error = Assert.Throws<RestrictedCodeException>(() => validator.Validate("t.Result"));
+
+        Assert.Contains("Result", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Validate_ResultOfTaskFromEarlierCell_Rejects()
     {
         var validator = NewValidator();
