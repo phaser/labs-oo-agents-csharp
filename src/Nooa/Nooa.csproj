@@ -5,12 +5,14 @@
     <RootNamespace>Nooa</RootNamespace>
   </PropertyGroup>
 
-  <!-- NuGet package. The version is the single place that sets the package version. -->
+  <!-- NuGet package. MinVer sets the version from the git tag (vX.Y.Z-alpha.N). A commit after no tag gives 0.1.0-alpha.0.N. -->
   <PropertyGroup>
     <PackageId>Nooa</PackageId>
-    <Version>0.1.1</Version>
+    <MinVerDefaultPreReleaseIdentifiers>alpha.0</MinVerDefaultPreReleaseIdentifiers>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
+    <MinVerMinimumMajorMinor>0.1</MinVerMinimumMajorMinor>
     <Authors>Cristian Bidea</Authors>
-    <Description>NOOA for C#: an agent is a class. Fields are state, methods are capabilities, doc comments are prompts. A partial method marked [Agentic] is run by a model loop. The source generator ships inside this package.</Description>
+    <Description>Unofficial C# port of NVIDIA NeMo OO Agents (NOOA), based on NVIDIA-NeMo/labs-OO-Agents by NVIDIA CORPORATION &amp; AFFILIATES. An agent is a class. Fields are state, methods are capabilities, doc comments are prompts. A partial method marked [Agentic] is run by a model loop. The source generator ships inside this package.</Description>
     <PackageTags>agents;llm;ai;source-generator</PackageTags>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -41,6 +43,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="MinVer" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Scripting" />
     <PackageReference Include="Microsoft.Data.Sqlite" />
     <PackageReference Include="Microsoft.Extensions.AI.Abstractions" />
