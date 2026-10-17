@@ -40,3 +40,5 @@ Upstream (pin in the plan):
 Exit check for M4.
 
 Deferred `CodeActConfig` fields from T03 (add them with the types they use): `Restrictions` (T16), `Prefill` (this task), `Preconditions` and `Postconditions` (this task), `Sandbox` and `ExecutionBackend` (B01). Merge them as explicit-field properties (see `ConfigBase`).
+
+From T21: expose `TodoManager` (`src/Nooa/Tools/`) to the REPL as `self.todo` (T17/T22). Register the context block `todo_status` with the expression `self.todo.status()`. Upstream also keeps `Todo.v` (T15), and `doc(self.todo)` must show only the non-`[Hidden]` methods.

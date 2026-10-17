@@ -109,3 +109,11 @@
 - Trust for a layered config file lives in `LayerTrust.IsTrusted(path, fileName, envVar)`. Use it for every new layered file kind. A project-layer file must not replace a trusted entry, and must not combine a key variable with a custom host.
 - `ChatOptions.Reasoning = new ReasoningOptions { Effort = ReasoningEffort.High }` reaches the OpenAI wire as `reasoning_effort`. A test checks the body.
 - A test that needs a trusted layer writes to the user dir. The project dir is untrusted.
+
+## Todo tool (T21)
+
+- A `[Snapshotable]` class that is a stateful object needs a `JsonConverter<T>` (attribute on the class) so it keeps private state. Snapshot eligibility checks only its public properties, so give it none.
+- `SnapshotValues.ToNode` (internal) is the JSON-like value filter. Reuse it for any "store only serializable values" rule. It throws `SerializationException`.
+- A property of type `string` that gets `null` from STJ stays `null`. Remove null keys from a legacy JSON object before `Deserialize<T>` so the initializers apply.
+- A reference type that must convert from two types (`Todo | str`) works as a `readonly record struct` with two implicit operators.
+- C# 14 `x?.Prop = value` compiles in this repo.
