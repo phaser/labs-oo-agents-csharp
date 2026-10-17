@@ -1,6 +1,6 @@
 ---
-pr:
-pr_url:
+pr: 15
+pr_url: https://github.com/phaser/labs-oo-agents-csharp/pull/15
 jira:
 epic: M6
 status: open
