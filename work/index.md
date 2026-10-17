@@ -65,7 +65,7 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
-| [T22 Quickstart examples and acceptance](t22-quickstart-acceptance.md) | — | — | open | 2026-10-17 |
+| [T22 Quickstart examples and acceptance](25-quickstart-acceptance.md) | [#25](https://github.com/phaser/labs-oo-agents-csharp/pull/25) | — | open | 2026-10-17 |
 
 ## Backlog (after v1)
 
