@@ -23,6 +23,7 @@ internal static class SpanAttributes
     public const int MaxErrorChars = 5_000;
 
     private const int _maxScrubInputChars = 1_000_000;
+    private const int _cutMargin = 256;
     private const int _maxDepth = 16;
     private const int _maxLength = 20;
     private const int _maxString = 2_000;
@@ -44,7 +45,7 @@ internal static class SpanAttributes
 
         if (value is string text)
         {
-            var (scrubbed, count) = SecretScrubber.ScrubValue(Cap(text, _maxScrubInputChars));
+            var (scrubbed, count) = SecretScrubber.ScrubValue(PreCap(text));
             Bump(span, count);
             span.SetTag(key, Cap((string)scrubbed!, MaxValueChars));
             return;
@@ -64,13 +65,14 @@ internal static class SpanAttributes
         }
 
         var type = exception.GetType().Name;
-        var message = Cap(exception.Message, MaxErrorChars);
-        span.SetStatus(ActivityStatusCode.Error, Cap(SecretScrubber.ScrubString(exception.Message).Text, MaxErrorChars));
+        // Scrub the whole text first, then cap: a cap must never cut a secret in half.
+        var message = Cap(SecretScrubber.ScrubString(PreCap(exception.Message)).Text, MaxErrorChars);
+        span.SetStatus(ActivityStatusCode.Error, message);
         Set(span, "error.type", type);
         Set(span, "error.message", message);
         Set(span, "exception.type", type);
         Set(span, "exception.message", message);
-        Set(span, "exception.stacktrace", Cap(exception.StackTrace ?? "", MaxErrorChars));
+        Set(span, "exception.stacktrace", Cap(SecretScrubber.ScrubString(PreCap(exception.StackTrace ?? "")).Text, MaxErrorChars));
     }
 
     /// <summary>Formats a value for an attribute, with the caps of the agent document formatter.</summary>
@@ -114,6 +116,18 @@ internal static class SpanAttributes
 
         var half = Math.Max(1, (maxChars - 64) / 2);
         return string.Concat(text.AsSpan(0, half), $"\n... [{text.Length - (2 * half)} characters omitted] ...\n", text.AsSpan(text.Length - half));
+    }
+
+    // Bounds the text that the scrubber scans. The cut drops a margin on each side, so no secret of ordinary length is left half-cut.
+    private static string PreCap(string text)
+    {
+        if (text.Length <= _maxScrubInputChars)
+        {
+            return text;
+        }
+
+        var keep = (_maxScrubInputChars / 2) - _cutMargin;
+        return string.Concat(text.AsSpan(0, keep), $"\n... [{text.Length - (2 * keep)} characters omitted] ...\n", text.AsSpan(text.Length - keep));
     }
 
     private static string Encode(List<KeyValuePair<string, object?>> values, int perValue)

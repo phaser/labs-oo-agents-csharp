@@ -83,4 +83,31 @@ public class OtlpJsonTests
         Assert.Contains("héllo 世界", text, StringComparison.Ordinal);
         Assert.DoesNotContain('\n', text);
     }
+
+    private sealed class Leaky : IFormattable
+    {
+        public override string ToString() => "obj AKIAIOSFODNN7EXAMPLE";
+
+        public string ToString(string? format, IFormatProvider? formatProvider) => ToString();
+    }
+
+    [Fact]
+    public void Serialize_SecretsOnAnyPath_AreScrubbedAtTheWire()
+    {
+        using var capture = new SpanCapture();
+        var span = NooaTracing.Source.StartActivity("name AKIAIOSFODNN7EXAMPLE")!;
+        span.SetTag("object", new Leaky());
+        span.SetTag("AKIAIOSFODNN7EXAMPLE", "v");
+        span.SetTag("password", 12345);
+        span.AddEvent(new ActivityEvent("evt ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmn", tags: new ActivityTagsCollection { ["note"] = "AKIAIOSFODNN7EXAMPLE", ["token"] = "x" }));
+        span.SetStatus(ActivityStatusCode.Error, "failed with AKIAIOSFODNN7EXAMPLE");
+        span.Stop();
+
+        var text = System.Text.Encoding.UTF8.GetString(OtlpJson.Serialize([span], new Dictionary<string, object?> { ["leak"] = "AKIAIOSFODNN7EXAMPLE", ["api_key"] = "z" }));
+
+        Assert.DoesNotContain("AKIA", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("ghp_", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("12345", text, StringComparison.Ordinal);
+        Assert.Contains("[REDACTED]", text, StringComparison.Ordinal);
+    }
 }

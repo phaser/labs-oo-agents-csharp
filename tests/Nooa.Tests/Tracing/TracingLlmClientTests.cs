@@ -105,8 +105,8 @@ public class TracingLlmClientTests
         await client.CallAsync([LlmMessage.User(new string('i', 200_000))], cancellationToken: TestContext.Current.CancellationToken);
 
         var span = capture.Single("llm");
-        Assert.True(Tag(span, "llm.input_messages.0.message.content").Length < 21_000);
-        Assert.True(Tag(span, "output.value").Length < 21_000);
+        Assert.True(Tag(span, "llm.input_messages.0.message.content").Length <= SpanAttributes.MaxValueChars);
+        Assert.True(Tag(span, "output.value").Length <= SpanAttributes.MaxValueChars);
     }
 
     [Fact]
@@ -155,5 +155,19 @@ public class TracingLlmClientTests
 
         Assert.Equal(128_000, client.ContextWindow);
         Assert.True(client.CountTokens("hello world") > 0);
+    }
+
+    [Fact]
+    public async Task CallAsync_SecretAcrossTheOldCapBoundary_IsRedactedWhole()
+    {
+        using var capture = new SpanCapture();
+        var secret = "AKIAIOSFODNN7EXAMPLE";
+        var client = new TracingLlmClient(FakeLlmClient.SimpleMessage(new string('o', 19_990) + secret + new string('o', 100)));
+
+        await client.CallAsync([LlmMessage.User(new string('i', 19_990) + secret + new string('i', 100))], cancellationToken: TestContext.Current.CancellationToken);
+
+        var all = string.Concat(capture.Single("llm").TagObjects.Select(t => t.Value?.ToString()));
+        Assert.DoesNotContain("AKIA", all, StringComparison.Ordinal);
+        Assert.DoesNotContain("IOSFODNN", all, StringComparison.Ordinal);
     }
 }

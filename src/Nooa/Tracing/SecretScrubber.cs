@@ -59,7 +59,7 @@ public static class SecretScrubber
         ("stripe_key", Make(@"(?<secret>(?:sk|pk|rk)_(?:live|test)_[A-Za-z0-9]{20,})")),
         ("nvidia_api_key", Make(@"(?<secret>nvapi-[A-Za-z0-9_\-]{20,})")),
         ("anthropic_key", Make(@"(?<secret>sk-ant-[A-Za-z0-9_\-]{20,})")),
-        ("openai_key", Make(@"(?<secret>sk-[A-Za-z0-9]{20,})")),
+        ("openai_key", Make(@"(?<secret>sk-(?:proj-|svcacct-|admin-)?[A-Za-z0-9_\-]{20,})")),
         ("google_key", Make(@"(?<secret>AIza[A-Za-z0-9_\-]{35})")),
         ("bearer_token", Make(@"[Bb]earer\s+(?<secret>[A-Za-z0-9_.\-/+=]{20,})")),
         ("generic_api_key", Make(
@@ -91,6 +91,17 @@ public static class SecretScrubber
 
         var count = 0;
         var result = text;
+
+        // The environment pass runs first: a regex replacement could split an environment value and hide it from this pass.
+        foreach (var secret in EnvironmentSecrets())
+        {
+            if (result.Contains(secret, StringComparison.Ordinal))
+            {
+                result = result.Replace(secret, Redacted, StringComparison.Ordinal);
+                count++;
+            }
+        }
+
         try
         {
             foreach (var (_, pattern) in _patterns)
@@ -106,15 +117,6 @@ public static class SecretScrubber
         catch (RegexMatchTimeoutException)
         {
             return (Redacted, count + 1);
-        }
-
-        foreach (var secret in EnvironmentSecrets())
-        {
-            if (result.Contains(secret, StringComparison.Ordinal))
-            {
-                result = result.Replace(secret, Redacted, StringComparison.Ordinal);
-                count++;
-            }
         }
 
         return (result, count);
@@ -243,9 +245,11 @@ public static class SecretScrubber
                     }
                     else
                     {
+                        // A key can carry a secret too, for example a map from token to value.
+                        var (cleanKey, keyCount) = ScrubString(key);
                         var (scrubbed, n) = ScrubNode(item);
-                        result[key] = scrubbed;
-                        count += n;
+                        result[cleanKey] = scrubbed;
+                        count += n + keyCount;
                     }
                 }
 

@@ -166,4 +166,31 @@ public class SpanAttributesTests
     [Fact]
     public void Cap_ShortText_IsUnchanged() =>
         Assert.Equal("abc", SpanAttributes.Cap("abc", 10));
+
+    [Fact]
+    public void RecordError_SecretAcrossTheCapBoundary_IsRedacted()
+    {
+        using var capture = new SpanCapture();
+        using var span = Start(capture);
+        var message = new string('m', SpanAttributes.MaxErrorChars - 10) + "AKIAIOSFODNN7EXAMPLE" + new string('m', 50);
+
+        SpanAttributes.RecordError(span, new InvalidOperationException(message));
+
+        var all = string.Concat(span.TagObjects.Select(t => t.Value?.ToString())) + span.StatusDescription;
+        Assert.DoesNotContain("AKIA", all, StringComparison.Ordinal);
+        Assert.DoesNotContain("IOSFODNN", all, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Set_SecretAcrossThePreCapBoundary_LeavesNoFragment()
+    {
+        using var capture = new SpanCapture();
+        using var span = Start(capture);
+        var secret = "AKIAIOSFODNN7EXAMPLE";
+
+        SpanAttributes.Set(span, "x", new string('m', 500_000 - 10) + secret + new string('m', 600_000));
+
+        Assert.DoesNotContain("AKIA", (string)span.GetTagItem("x")!, StringComparison.Ordinal);
+        Assert.DoesNotContain("IOSFODNN", (string)span.GetTagItem("x")!, StringComparison.Ordinal);
+    }
 }

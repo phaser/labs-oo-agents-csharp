@@ -70,7 +70,7 @@ internal static class OtlpJson
             writer.WriteString("parentSpanId", span.ParentSpanId.ToHexString());
         }
 
-        writer.WriteString("name", span.DisplayName);
+        writer.WriteString("name", Clean(span.DisplayName));
         writer.WriteNumber("kind", (int)span.Kind + 1);
         writer.WriteString("startTimeUnixNano", Nanos(span.StartTimeUtc).ToString(CultureInfo.InvariantCulture));
         writer.WriteString("endTimeUnixNano", Nanos(span.StartTimeUtc + span.Duration).ToString(CultureInfo.InvariantCulture));
@@ -79,7 +79,7 @@ internal static class OtlpJson
         writer.WriteNumber("code", (int)span.Status);
         if (!string.IsNullOrEmpty(span.StatusDescription))
         {
-            writer.WriteString("message", span.StatusDescription);
+            writer.WriteString("message", Clean(span.StatusDescription));
         }
 
         writer.WriteEndObject();
@@ -90,7 +90,7 @@ internal static class OtlpJson
             {
                 writer.WriteStartObject();
                 writer.WriteString("timeUnixNano", Nanos(e.Timestamp.UtcDateTime).ToString(CultureInfo.InvariantCulture));
-                writer.WriteString("name", e.Name);
+                writer.WriteString("name", Clean(e.Name));
                 WriteAttributes(writer, e.Tags);
                 writer.WriteEndObject();
             }
@@ -112,25 +112,34 @@ internal static class OtlpJson
             }
 
             writer.WriteStartObject();
-            writer.WriteString("key", key);
+            writer.WriteString("key", Clean(key));
             writer.WriteStartObject("value");
-            switch (value)
+            if (SecretScrubber.RedactKey(key) is not null)
             {
-                case bool b:
-                    writer.WriteBoolean("boolValue", b);
-                    break;
-                case int or long or short or byte or uint or ulong:
-                    writer.WriteString("intValue", Convert.ToString(value, CultureInfo.InvariantCulture));
-                    break;
-                case double d when double.IsFinite(d):
-                    writer.WriteNumber("doubleValue", d);
-                    break;
-                case float f when float.IsFinite(f):
-                    writer.WriteNumber("doubleValue", f);
-                    break;
-                default:
-                    writer.WriteString("stringValue", Convert.ToString(value, CultureInfo.InvariantCulture));
-                    break;
+                writer.WriteString("stringValue", SecretScrubber.Redacted);
+            }
+            else
+            {
+                switch (value)
+                {
+                    case bool b:
+                        writer.WriteBoolean("boolValue", b);
+                        break;
+                    case int or long or short or byte or uint or ulong:
+                        writer.WriteString("intValue", Convert.ToString(value, CultureInfo.InvariantCulture));
+                        break;
+                    case double d when double.IsFinite(d):
+                        writer.WriteNumber("doubleValue", d);
+                        break;
+                    case float f when float.IsFinite(f):
+                        writer.WriteNumber("doubleValue", f);
+                        break;
+                    default:
+                        // Every other value, strings included, goes through the scrubber at the last step before the wire.
+                        var (clean, _) = SecretScrubber.ScrubValue(Convert.ToString(value, CultureInfo.InvariantCulture) ?? "");
+                        writer.WriteString("stringValue", (string)clean!);
+                        break;
+                }
             }
 
             writer.WriteEndObject();
@@ -139,6 +148,8 @@ internal static class OtlpJson
 
         writer.WriteEndArray();
     }
+
+    private static string Clean(string text) => SecretScrubber.ScrubString(text).Text;
 
     private static long Nanos(DateTime utc) => (utc - DateTime.UnixEpoch).Ticks * 100;
 }

@@ -227,4 +227,40 @@ public class SecretScrubberTests
     [InlineData("llm.token_count.total", null)]
     public void RedactKey_ClassifiesKeys(string key, string? reason) =>
         Assert.Equal(reason, SecretScrubber.RedactKey(key));
+
+    [Fact]
+    public void ScrubValue_JsonObjectKeyThatIsASecret_IsRedacted()
+    {
+        var (result, count) = SecretScrubber.ScrubValue("{\"AKIAIOSFODNN7EXAMPLE\":\"v\"}");
+
+        Assert.Equal("{\"[REDACTED]\":\"v\"}", result);
+        Assert.Equal(1, count);
+    }
+
+    [Fact]
+    public void ScrubString_EnvironmentValueThatARegexWouldSplit_IsRedactedWhole()
+    {
+        using var env = new EnvVars();
+        env.Set("QS_SPLIT_API_KEY", "prefix-sk-abcdefghijklmnopqrstuv-suffix123");
+
+        var (result, _) = SecretScrubber.ScrubString("value: prefix-sk-abcdefghijklmnopqrstuv-suffix123 end");
+
+        Assert.Equal("value: [REDACTED] end", result);
+    }
+
+    [Theory]
+    [InlineData("sk-proj-abcdefghijklmnopqrstuvwxyz")]
+    [InlineData("sk-svcacct-abcdefghijklmnopqrstuvwxyz")]
+    [InlineData("sk-admin-abcdefghijklmnopqrstuvwxyz")]
+    [InlineData("sk-abc_defghijklmnopqrstuv-wxyz")]
+    public void ScrubString_OpenAiKeyVariants_AreRedactedWhole(string key)
+    {
+        var (result, _) = SecretScrubber.ScrubString("use " + key + " now");
+
+        Assert.Equal("use [REDACTED] now", result);
+    }
+
+    [Fact]
+    public void ScrubString_AnthropicKey_StillMatchesFirst() =>
+        Assert.Equal("k [REDACTED]", SecretScrubber.ScrubString("k sk-ant-api03-abcdefghijklmnopqrstuv").Text);
 }

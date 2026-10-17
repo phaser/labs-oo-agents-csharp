@@ -14,7 +14,7 @@ namespace Nooa.Tracing;
 /// <remarks>
 /// <para>
 /// Messages are scrubbed and bounded: at most <see cref="MaxMessages"/> input messages (the first half and the last half; the
-/// number that is left out is in <c>nooa.llm.input_messages.omitted</c>), and each content is capped.
+/// number that is left out is in <c>nooa.llm.input_messages.omitted</c>), and each value is scrubbed in full, then capped by <c>SpanAttributes</c>.
 /// Opaque provider state and reasoning text are not recorded. The span is skipped inside a <see cref="NoTraceAttribute"/> generation.
 /// </para>
 /// </remarks>
@@ -23,8 +23,6 @@ public sealed class TracingLlmClient(ILlmClient inner) : ILlmClient
 {
     /// <summary>The largest number of input messages that one span records.</summary>
     public const int MaxMessages = 100;
-
-    private const int _maxContentChars = 20_000;
 
     /// <inheritdoc />
     public int? ContextWindow => inner.ContextWindow;
@@ -83,7 +81,7 @@ public sealed class TracingLlmClient(ILlmClient inner) : ILlmClient
                     break;
                 case ResponseMessage { Response: var response }:
                     SpanAttributes.Set(span, prefix + ".role", "assistant");
-                    SpanAttributes.Set(span, prefix + ".content", SpanAttributes.Cap(response.Content, _maxContentChars));
+                    SpanAttributes.Set(span, prefix + ".content", response.Content);
                     RecordToolCalls(span, prefix, response.ToolCalls);
                     break;
             }
@@ -105,9 +103,9 @@ public sealed class TracingLlmClient(ILlmClient inner) : ILlmClient
         var prefix = $"{OpenInferenceAttributes.LlmOutputMessages}.0.message";
         SpanAttributes.Set(span, OpenInferenceAttributes.LlmModelName, response.ModelName);
         SpanAttributes.Set(span, prefix + ".role", "assistant");
-        SpanAttributes.Set(span, prefix + ".content", SpanAttributes.Cap(response.Content, _maxContentChars));
+        SpanAttributes.Set(span, prefix + ".content", response.Content);
         RecordToolCalls(span, prefix, response.ToolCalls);
-        SpanAttributes.Set(span, OpenInferenceAttributes.OutputValue, SpanAttributes.Cap(response.Content, _maxContentChars));
+        SpanAttributes.Set(span, OpenInferenceAttributes.OutputValue, response.Content);
         SpanAttributes.Set(span, OpenInferenceAttributes.OutputMimeType, OpenInferenceAttributes.MimeText);
         SpanAttributes.Set(span, "llm.finish_reason", response.FinishReason.ToString());
         if (response.Usage is { } usage)
@@ -136,7 +134,7 @@ public sealed class TracingLlmClient(ILlmClient inner) : ILlmClient
     private static string? Content(JsonNode? content) => content switch
     {
         null => null,
-        JsonValue v when v.TryGetValue<string>(out var s) => SpanAttributes.Cap(s, _maxContentChars),
-        _ => SpanAttributes.Cap(content.ToJsonString(), _maxContentChars),
+        JsonValue v when v.TryGetValue<string>(out var s) => s,
+        _ => content.ToJsonString(),
     };
 }
