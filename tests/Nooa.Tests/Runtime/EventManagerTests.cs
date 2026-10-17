@@ -578,6 +578,29 @@ public class EventManagerTests
         Assert.Equal(1, runs);
     }
 
+    [Fact]
+    public void SetEventQuery_StoresAndClearsTheRuntimeQuery()
+    {
+        var manager = new EventManager();
+        var query = EventQuery.ByType("Error");
+
+        manager.SetEventQuery(query);
+        Assert.Same(query, manager.GetEventQuery());
+
+        manager.SetEventQuery(null);
+        Assert.Null(manager.GetEventQuery());
+    }
+
+    [Fact]
+    public void Filter_Query_DoesNotSearchFieldsHiddenFromTheModel()
+    {
+        var manager = new EventManager();
+        manager.Add(new UserEvent { Content = "visible", Metadata = new System.Text.Json.Nodes.JsonObject { ["note"] = "needle" } });
+
+        Assert.Empty(manager.Filter(query: "needle"));
+        Assert.Single(manager.Filter(query: "visible"));
+    }
+
     private static AgentCallContext Context(EventManager manager) =>
         new() { Agent = new EchoAgent(new AgentOptions { Llm = new Nooa.Llm.FakeLlmClient() }), MethodName = "m", Arguments = [] };
 }

@@ -25,12 +25,15 @@ public sealed record CellOutput() : EventBase(Role.User)
     public required ResultStatus ExecutionStatus { get; init; }
 
     /// <summary>Jupyter-style execution count (1, 2, 3, ...) for <c>Out[n]</c> access. Not shown to the model.</summary>
+    [Hidden]
     public required int ExecutionCount { get; init; }
 
     /// <summary>Captured standard output. The renderer must not truncate it.</summary>
+    [MaxString]
     public string Stdout { get; init; } = "";
 
     /// <summary>Captured standard error. The renderer must not truncate it.</summary>
+    [MaxString]
     public string Stderr { get; init; } = "";
 
     /// <summary>Formatted error message if execution failed.</summary>
@@ -42,8 +45,10 @@ public sealed record CellOutput() : EventBase(Role.User)
     public JsonNode? Value { get; init; }
 
     /// <summary>True if <see cref="Value"/> comes from an explicit <c>return x</c>, false if it is implicit. Not shown to the model.</summary>
+    [Hidden]
     public bool ExplicitReturn { get; init; }
 
     /// <summary>Image content blocks captured by <c>show()</c> during execution. Not shown to the model.</summary>
+    [Hidden]
     public IReadOnlyList<JsonNode> Images { get; init; } = [];
 }

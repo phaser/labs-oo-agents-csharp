@@ -15,6 +15,7 @@ namespace Nooa.Events;
 public sealed record TextOnlyReply() : EventBase(Role.Metadata)
 {
     /// <summary>Verbatim text that the model emitted. The renderer must not truncate it.</summary>
+    [MaxString]
     public string Content { get; init; } = "";
 
     /// <summary>The <c>finish_reason</c> of the text-only turn, for example <c>stop</c>.</summary>

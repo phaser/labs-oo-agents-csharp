@@ -18,8 +18,10 @@ namespace Nooa.Events;
 public sealed record TaskEvent() : EventBase(Role.User)
 {
     /// <summary>Task prompt that describes what to do. The renderer must not truncate it.</summary>
+    [MaxString]
     public required string Prompt { get; init; }
 
     /// <summary>Multimodal content blocks (images, audio, files) attached to this task. Not shown to the model.</summary>
+    [Hidden]
     public IReadOnlyList<JsonNode> Images { get; init; } = [];
 }

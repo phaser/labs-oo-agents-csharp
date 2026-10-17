@@ -6,6 +6,7 @@
 #pragma warning disable xUnit1051 // The agentic methods take an optional token that these tests do not need.
 
 using Nooa.Config;
+using Nooa.ContextBlocks;
 using Nooa.Errors;
 using Nooa.Events;
 using Nooa.Llm;
@@ -567,5 +568,48 @@ public class AgentTests
         var e = await Assert.ThrowsAsync<NooaRuntimeException>(() => agent.BadAsync("q"));
 
         Assert.Contains("must derive from GenerationStrategy", e.Message);
+    }
+
+    [Fact]
+    public void Constructor_NoRenderOptions_UsesTheCachedFormatterAndNoQuery()
+    {
+        var agent = new EchoAgent(Options(new FakeLlmClient()));
+
+        Assert.IsType<CachedBlockFormatter>(agent.BlockFormatter);
+        Assert.Null(agent.EventQuery);
+    }
+
+    [Fact]
+    public void Constructor_RenderOptions_AreKept()
+    {
+        var formatter = new XmlBlockFormatter();
+        var query = EventQuery.LastN(5);
+
+        var agent = new EchoAgent(new AgentOptions { Llm = new FakeLlmClient(), BlockFormatter = formatter, EventQuery = query });
+
+        Assert.Same(formatter, agent.BlockFormatter);
+        Assert.Same(query, agent.EventQuery);
+    }
+
+    [Fact]
+    public void Constructor_ContextOverrides_ApplyToProtectedAndNewBlocks()
+    {
+        var agent = new EchoAgent(new AgentOptions
+        {
+            Llm = new FakeLlmClient(),
+            Context = new Dictionary<string, object?>
+            {
+                ["system_prompt"] = "custom prompt",
+                ["state"] = null,
+                ["rules"] = Context.Of("be brief", prefix: true),
+                ["status"] = new DynamicContext(() => "ok"),
+            },
+        });
+
+        Assert.Equal("custom prompt", agent.ContextManager.Get("system_prompt"));
+        Assert.True(agent.ContextManager.IsDisabled("state"));
+        Assert.True(agent.ContextManager.IsStatic("rules"));
+        Assert.True(agent.ContextManager.Contains("status"));
+        Assert.True(agent.ContextManager.IsProtected("system_prompt"));
     }
 }

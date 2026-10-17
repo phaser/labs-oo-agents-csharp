@@ -23,5 +23,15 @@ public class GenerationStrategyTests
     public void RequiresLock_CanBeOverridden() => Assert.False(new GateStrategy(false).RequiresLock);
 
     [Fact]
+    public void ContextHooks_DefaultToNoOverridesAndNoOrder()
+    {
+        var strategy = new EchoStrategy();
+
+        Assert.Null(strategy.GetBlockOverrides());
+        Assert.Null(strategy.GetStaticBlockKeys());
+        Assert.Null(strategy.GetBlockOrder());
+    }
+
+    [Fact]
     public void Type_IsAbstract() => Assert.True(typeof(GenerationStrategy).IsAbstract);
 }

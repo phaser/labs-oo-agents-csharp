@@ -24,9 +24,11 @@ public sealed record Summary() : EventBase(Role.Assistant)
     public required SeqRange ReplacedRange { get; init; }
 
     /// <summary>Tags of the directly replaced events. Not shown to the model.</summary>
+    [Hidden]
     public IReadOnlyList<string> ChildrenTags { get; init; } = [];
 
     /// <summary>LLM-generated summary, or null for truncation. The renderer must not truncate it.</summary>
+    [MaxString]
     public string? SummaryText { get; init; }
 
     /// <summary>Usage hint for accessing the collapsed events.</summary>

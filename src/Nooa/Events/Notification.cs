@@ -29,6 +29,7 @@ public sealed record Notification() : EventBase(Role.User)
     /// <summary>
     /// Human-readable description. The renderer may cut it at 20,000 characters (above the default event limit of 10,000).
     /// </summary>
+    [MaxString(20_000)]
     public string Description { get; init; } = "";
 
     /// <summary>Optional data payload, as JSON. The caller must convert the value to JSON.</summary>

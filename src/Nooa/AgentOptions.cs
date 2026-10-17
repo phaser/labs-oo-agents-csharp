@@ -5,7 +5,9 @@
 
 using Microsoft.Extensions.Logging;
 using Nooa.Config;
+using Nooa.ContextBlocks;
 using Nooa.Llm;
+using Nooa.Runtime;
 using Nooa.Storage;
 using Nooa.Strategies;
 
@@ -51,6 +53,21 @@ public sealed record AgentOptions
     /// here uses it. Other strategy types get a new instance from their parameterless constructor.
     /// </summary>
     public IReadOnlyList<GenerationStrategy>? Strategies { get; init; }
+
+    /// <summary>
+    /// Formats the context blocks into messages. Null uses <see cref="CachedBlockFormatter"/>, which keeps a stable
+    /// prefix for provider caching.
+    /// </summary>
+    public BlockFormatter? BlockFormatter { get; init; }
+
+    /// <summary>The default filter for the events that appear in the context. Null shows all active events.</summary>
+    public EventQuery? EventQuery { get; init; }
+
+    /// <summary>
+    /// Overrides for context blocks, applied at construction, also for the protected blocks. A value is a plain value,
+    /// a <see cref="Context"/>, a <see cref="DynamicContext"/>, or null to remove the block.
+    /// </summary>
+    public IReadOnlyDictionary<string, object?>? Context { get; init; }
 
     /// <summary>Receives warnings from handlers, hooks and cleanup. Null discards them.</summary>
     public ILogger? Logger { get; init; }

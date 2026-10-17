@@ -35,6 +35,22 @@ public abstract class GenerationStrategy
     /// </summary>
     public virtual bool RequiresLock => true;
 
+    /// <summary>
+    /// Context blocks that this strategy replaces, adds (a value) or removes (null). The override applies to every
+    /// request of the strategy. A value can be plain, a <see cref="Nooa.ContextBlocks.Context"/> or a
+    /// <see cref="Nooa.ContextBlocks.DynamicContext"/>. The default is none.
+    /// </summary>
+    public virtual IReadOnlyDictionary<string, object?>? GetBlockOverrides() => null;
+
+    /// <summary>The keys of blocks that this strategy adds to the static (cacheable) partition. The default is none.</summary>
+    public virtual IReadOnlySet<string>? GetStaticBlockKeys() => null;
+
+    /// <summary>
+    /// The keys of the system blocks that come first, in this order. Other blocks follow in their own order.
+    /// The default keeps the block order.
+    /// </summary>
+    public virtual IReadOnlyList<string>? GetBlockOrder() => null;
+
     /// <summary>Runs the strategy for one call and returns its result.</summary>
     /// <param name="runtime">The services of the agent runtime.</param>
     /// <param name="call">The call to generate.</param>

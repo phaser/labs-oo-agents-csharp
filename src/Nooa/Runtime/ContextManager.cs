@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Ported from: src/nooa/runtime/context_manager.py
 
+using Nooa.ContextBlocks;
 using Nooa.Errors;
 
 namespace Nooa.Runtime;
@@ -93,22 +94,72 @@ public sealed class ContextManager
 
     /// <summary>
     /// Sets a block in the volatile partition. A null value disables the key and removes an unprotected block.
+    /// A <see cref="Context"/> sets its own content and partition, and a <see cref="DynamicContext"/> sets a provider.
     /// </summary>
     /// <exception cref="ProtectedBlockException">The key is protected and the value is not null.</exception>
     public void Set(string key, object? value)
     {
-        if (value is null)
+        switch (value)
         {
-            Disable(key);
-            if (!_protected.Contains(key) && _blocks.Remove(key))
-            {
-                _resolved.Remove(key);
-            }
+            case null:
+                Disable(key);
+                if (!_protected.Contains(key) && _blocks.Remove(key))
+                {
+                    _resolved.Remove(key);
+                }
 
-            return;
+                return;
+            case Context { Provider: { } provider, Prefix: true }:
+                SetStaticProvider(key, provider);
+                return;
+            case Context { Provider: { } provider }:
+                SetDynamicProvider(key, provider);
+                return;
+            case Context { Prefix: true } context:
+                SetStatic(key, context.Value!);
+                return;
+            case Context context:
+                SetDynamic(key, context.Value);
+                return;
+            case DynamicContext dynamic:
+                SetDynamicProvider(key, dynamic.Provider);
+                return;
+            default:
+                SetDynamic(key, value);
+                return;
         }
+    }
 
-        SetDynamic(key, value);
+    /// <summary>
+    /// Applies one override of a block, for the overrides that the agent options set at construction. It works for
+    /// a protected key too. The override keeps the partition of the block that it replaces. A new block goes to the
+    /// volatile partition.
+    /// </summary>
+    /// <param name="key">The block key.</param>
+    /// <param name="value">A plain value, a <see cref="Context"/>, a <see cref="DynamicContext"/>, or null to disable and remove the block.</param>
+    public void ApplyOverride(string key, object? value)
+    {
+        var isProtected = _protected.Contains(key);
+        switch (value)
+        {
+            case DynamicContext dynamic when isProtected:
+                if (IsStatic(key))
+                {
+                    SetStaticProtected(key, dynamic.Provider);
+                }
+                else
+                {
+                    SetDynamicProtected(key, dynamic.Provider);
+                }
+
+                break;
+            case not null and not Context and not DynamicContext when isProtected:
+                SetProtectedValue(key, value);
+                break;
+            default:
+                Set(key, value);
+                break;
+        }
     }
 
     /// <summary>Sets a plain block in the static (cacheable) partition.</summary>

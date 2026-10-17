@@ -117,3 +117,14 @@
 - A property of type `string` that gets `null` from STJ stays `null`. Remove null keys from a legacy JSON object before `Deserialize<T>` so the initializers apply.
 - A reference type that must convert from two types (`Todo | str`) works as a `readonly record struct` with two implicit operators.
 - C# 14 `x?.Prop = value` compiles in this repo.
+
+## Context renderer (T13)
+
+- `cond ? (long)x : doubleValue` has type `double` in C#, so an integer prints as `5.0`. Cast one branch to `object` when the result must keep its kind.
+- `JsonValue.GetValue<double>()` throws for a value that was made from an `int`. Read a number with `JsonSerializer.SerializeToElement(value)` and `TryGetInt64`, then `GetDouble`.
+- A positional record can redeclare a parameter as an explicit property (`public Func<object?> Provider { get; } = Provider ?? throw ...`). That gives a null check or a default without a constructor body.
+- `[Hidden]` is read by `PFormat` from the backing field of an auto-property, so a get-only property that the constructor sets (`EventRole`) shows up unless it is hidden. Computed properties never show.
+- To keep text from closing a delimiter, escape every `</` in the content, not only the tag names that you know. The set of tags (block keys) is not fixed, and a key can come from model-written code.
+- Equal message lists in a test: `JsonMessage` holds a `JsonObject`, which compares by reference. Compare `ToJsonString()`.
+- xUnit `Assert.Contains` on a long string shows only the head of the text. Use `Assert.Fail(text)` once to see the whole text.
+- `dotnet format` sorts `using` directives: it fails for a `System.*` using after the others and for a `using` before the file-scoped `namespace` in a test file. Run `dotnet format Nooa.slnx` once, then `--verify-no-changes`.
