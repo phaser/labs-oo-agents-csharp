@@ -123,7 +123,10 @@ public sealed class ActorRuntime : IRuntimeServices
 
     /// <summary>Runs one agentic call through the method wrapper. <see cref="Agent"/> calls this.</summary>
     internal Task<object?> InvokeAsync(CurrentCall call, CancellationToken cancellationToken) =>
-        _invoker.InvokeAsync(call, cancellationToken);
+        AgentContext.EvaluatingExpression
+            ? throw new NooaRuntimeException(
+                $"{call.MethodName} cannot run while a context expression is evaluated. An expression must not call an LLM method.")
+            : _invoker.InvokeAsync(call, cancellationToken);
 
     /// <summary>Takes the generation lock when needed and runs the strategy of the call.</summary>
     internal async Task<object?> DispatchAsync(CurrentCall call, MethodInfo? method, CancellationToken cancellationToken)

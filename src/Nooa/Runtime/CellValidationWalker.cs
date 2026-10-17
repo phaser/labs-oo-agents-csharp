@@ -16,7 +16,10 @@ namespace Nooa.Runtime;
 internal sealed class CellValidationWalker(SemanticModel model, CellValidatorOptions options, IReadOnlySet<string> protectedNames)
     : CSharpSyntaxWalker(SyntaxWalkerDepth.StructuredTrivia)
 {
+    private const string _agentTypeName = "Nooa.Agent";
+
     private readonly List<CellIssue> _issues = [];
+    private readonly HashSet<string> _agentTypeNames = AgentTypeNames(options.GlobalsType);
 
     public IReadOnlyList<CellIssue> Issues => _issues;
 
@@ -154,6 +157,16 @@ internal sealed class CellValidationWalker(SemanticModel model, CellValidatorOpt
         var symbols = info.Symbol is { } one ? [one] : info.CandidateSymbols;
         foreach (var symbol in symbols)
         {
+            if (IsForbiddenSelfCall(symbol))
+            {
+                var name = symbol.Name;
+                Report(place, "self." + name, $"Calling {name} from a cell is forbidden. It would run the model again from inside this code (a call, a method group or a delegate of it).");
+            }
+            else if (IsHiddenAgentMember(symbol))
+            {
+                Report(place, "hidden " + symbol.Name, HiddenMessage(symbol.Name));
+            }
+
             if (symbol is IDynamicTypeSymbol)
             {
                 ReportGroup(RestrictedApiGroup.Reflection, node, "dynamic", "Dynamic binding is not allowed in cells. Use static types.");
@@ -168,6 +181,41 @@ internal sealed class CellValidationWalker(SemanticModel model, CellValidatorOpt
         {
             Report(place, unresolved);
         }
+    }
+
+    /// <summary>
+    /// True for a method of the agent type (or a base type) whose name is in <see cref="CellValidatorOptions.ForbiddenSelfCalls"/>.
+    /// The receiver does not matter, so an alias variable, a method group and a delegate are refused too.
+    /// </summary>
+    private bool IsForbiddenSelfCall(ISymbol symbol) =>
+        symbol is IMethodSymbol { ContainingType: { } owner } method
+        && options.ForbiddenSelfCalls.Contains(method.Name)
+        && _agentTypeNames.Contains(NameOf(owner));
+
+    /// <summary>True for a <see cref="HiddenAttribute"/> member that <c>Nooa.Agent</c> itself declares, such as <c>Context</c>, <c>Events</c> or <c>ContextManager</c>.</summary>
+    private static bool IsHiddenAgentMember(ISymbol symbol) =>
+        symbol is IPropertySymbol or IMethodSymbol or IFieldSymbol
+        && symbol.ContainingType is { } owner
+        && NameOf(owner) == _agentTypeName
+        && symbol.GetAttributes().Any(a => a.AttributeClass is { Name: "HiddenAttribute" } c && NameOf(c) == "Nooa.HiddenAttribute");
+
+    private static string HiddenMessage(string name) =>
+        $"{name} is hidden from cells. The agent class can expose it on purpose: declare a member with the same name that has no [Hidden] attribute, for example 'public new ContextApi Context => base.Context;'.";
+
+    private static string NameOf(INamedTypeSymbol type) => type.OriginalDefinition.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat);
+
+    private static HashSet<string> AgentTypeNames(Type? globalsType)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        if (globalsType is { IsGenericType: true } && globalsType.GenericTypeArguments is [var agent])
+        {
+            for (var type = agent; type is not null; type = type.BaseType)
+            {
+                names.Add((type.FullName ?? type.Name).Replace('+', '.'));
+            }
+        }
+
+        return names;
     }
 
     private void CheckShadow(SyntaxToken identifier)

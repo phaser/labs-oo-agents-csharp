@@ -39,3 +39,4 @@ Details are in `docs/porting-notes.md` ("ContextApi, EventsApi and expression bl
 - Opt-in to the model: `public new ContextApi Context => base.Context;` in the agent class.
 - Also fixed: `NooaJson.Options` had no `TypeInfoResolver` (order-dependent `ToolSchema` test failure).
 - Not ported: `set_static`, `set_dynamic(value=)`, deprecation warnings.
+- Security review fixes: symbol-based `ForbiddenSelfCalls`, re-entrancy guard, failed/abandoned expression cap, `[Hidden]` agent members refused in cells (see porting-notes).

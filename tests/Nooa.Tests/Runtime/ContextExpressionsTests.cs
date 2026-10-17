@@ -166,4 +166,112 @@ public class ContextExpressionsTests
 
         Assert.Equal(["plain"], snapshot.Context.Select(b => b.Key));
     }
+
+    [Theory]
+    [InlineData("self.AskAsync(\"q\").Result")]
+    [InlineData("((Func<string, Task<string>>)self.AskAsync)(\"q\").Result")]
+    [InlineData("new Func<string, Task<string>>(self.AskAsync)(\"q\").Result")]
+    [InlineData("((Func<Func<string, Task<string>>>)(() => self.AskAsync))()(\"q\").Result")]
+    public void Bind_AgenticCallByAliasMethodGroupOrDelegate_IsRefused(string text)
+    {
+        var agent = new SpinAgent(new AgentOptions { Llm = new FakeLlmClient() });
+
+        Assert.Throws<RestrictedCodeException>(() => agent.ContextManager.Expressions!.Bind(text));
+    }
+
+    [Fact]
+    public void Bind_AgenticCallThroughAnAliasVariable_IsRefused()
+    {
+        var agent = new SpinAgent(new AgentOptions { Llm = new FakeLlmClient() });
+
+        Assert.Throws<RestrictedCodeException>(() => agent.ContextManager.Expressions!.Bind("((Func<SpinAgent, string>)(a => a.AskAsync(\"q\").Result))(self)"));
+    }
+
+    [Fact]
+    public async Task AgenticCall_WhileAnExpressionRuns_Fails()
+    {
+        var agent = new SpinAgent(new AgentOptions { Llm = new FakeLlmClient() });
+        AgentContext.EvaluatingExpression = true;
+        Exception? seen;
+        try
+        {
+            seen = await Record.ExceptionAsync(() => agent.AskAsync("q"));
+        }
+        finally
+        {
+            AgentContext.EvaluatingExpression = false;
+        }
+
+        Assert.IsType<NooaRuntimeException>(seen);
+    }
+
+    [Fact]
+    public void Evaluate_ThatIgnoresTheToken_IsAbandonedOnceAndNotEvaluatedAgain()
+    {
+        var agent = new SpinAgent(new AgentOptions { Llm = new FakeLlmClient() });
+        var expressions = new ContextExpressions(agent, TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(200));
+        _ = expressions.Bind("\"warm up\"")();
+        SpinAgent.Stop = false;
+        try
+        {
+            var provider = expressions.Bind("self.Spin()");
+
+            Assert.Throws<ValidationException>(() => provider());
+            var again = Assert.Throws<ValidationException>(() => provider());
+
+            Assert.Contains("not evaluated again", again.Message, StringComparison.Ordinal);
+            Assert.Throws<ValidationException>(() => expressions.Bind("self.Spin()")());
+        }
+        finally
+        {
+            SpinAgent.Stop = true;
+        }
+    }
+
+    [Fact]
+    public void Evaluate_AfterTooManyAbandoned_RefusesEveryExpression()
+    {
+        var agent = new SpinAgent(new AgentOptions { Llm = new FakeLlmClient() });
+        var expressions = new ContextExpressions(agent, TimeSpan.FromSeconds(1), TimeSpan.FromMilliseconds(200));
+        _ = expressions.Bind("\"warm up\"")();
+        SpinAgent.Stop = false;
+        try
+        {
+            for (var i = 0; i < ContextExpressions.MaxAbandoned; i++)
+            {
+                Assert.Throws<ValidationException>(expressions.Bind($"self.Spin() + \"{i}\""));
+            }
+
+            var error = Assert.Throws<ValidationException>(expressions.Bind("\"fine\""));
+
+            Assert.Contains("No expression is evaluated any more", error.Message, StringComparison.Ordinal);
+        }
+        finally
+        {
+            SpinAgent.Stop = true;
+        }
+    }
+
+    [Theory]
+    [InlineData("self.Context")]
+    [InlineData("self.Events")]
+    [InlineData("self.ContextManager")]
+    [InlineData("self.EventManager.Count")]
+    [InlineData("self.Storage")]
+    [InlineData("self.Llm")]
+    public void Bind_HiddenAgentMember_IsRefusedUnlessTheAgentExposesIt(string text)
+    {
+        var agent = new PlainAgent(new AgentOptions { Llm = new FakeLlmClient() });
+
+        Assert.Throws<RestrictedCodeException>(() => agent.ContextManager.Expressions!.Bind(text));
+    }
+
+    [Fact]
+    public void Bind_ContextExposedByTheAgentClass_IsAllowedButEventsStaysHidden()
+    {
+        var agent = new SpinAgent(new AgentOptions { Llm = new FakeLlmClient() });
+
+        Assert.Equal("ContextApi(0 blocks)", agent.ContextManager.Expressions!.Bind("self.Context.ToString()")());
+        Assert.Throws<RestrictedCodeException>(() => agent.ContextManager.Expressions!.Bind("self.Events"));
+    }
 }

@@ -23,20 +23,34 @@ namespace Nooa.Runtime;
 /// a prompt build.
 /// </para>
 /// <para>
+/// An evaluation that hits the time limit or is abandoned marks its expression as failed, and the expression is not evaluated
+/// again. An agent keeps at most <see cref="MaxAbandoned"/> abandoned evaluations (each holds a thread that cannot be stopped in
+/// process): after that no expression runs. An agentic call that starts while an expression runs fails
+/// (<see cref="AgentContext.EvaluatingExpression"/>).
+/// </para>
+/// <para>
 /// Only code that the host or the model writes in the process reaches this class. A snapshot or a config file never
 /// does: <c>AgentSnapshot</c> does not save a block with a provider, and no loader turns stored text into an expression.
 /// A new session for each evaluation keeps one evaluation from leaking variables into the next, and an engine that
 /// gives up a cell does not poison later turns. The cost is one compile per block per turn.
 /// </para>
 /// </remarks>
-internal sealed class ContextExpressions(Agent agent)
+internal sealed class ContextExpressions(Agent agent, TimeSpan? timeout = null, TimeSpan? abandonGrace = null)
 {
     /// <summary>The time limit of one evaluation.</summary>
     internal static readonly TimeSpan EvaluationTimeout = TimeSpan.FromSeconds(5);
 
     private static readonly string[] _extraImports = ["Nooa.Agentdoc"];
 
+    /// <summary>The most abandoned evaluations that one agent keeps. A later evaluation is refused.</summary>
+    internal const int MaxAbandoned = 3;
+
     private readonly Type _agentType = agent.GetType();
+    private readonly TimeSpan _timeout = timeout ?? EvaluationTimeout;
+    private readonly TimeSpan _abandonGrace = abandonGrace ?? new ReplOptions().AbandonGrace;
+    private readonly HashSet<string> _failed = [];
+    private readonly Lock _gate = new();
+    private int _abandoned;
 
     /// <summary>Checks the expression now and returns a provider that evaluates it.</summary>
     /// <exception cref="ArgumentException">The text is empty, too long, or not one expression.</exception>
@@ -73,8 +87,45 @@ internal sealed class ContextExpressions(Agent agent)
 
     private object? Evaluate(string expression)
     {
+        lock (_gate)
+        {
+            if (_failed.Contains(expression))
+            {
+                throw new ValidationException("This expression did not stop in time earlier, so it is not evaluated again. Set the block again with a faster expression.");
+            }
+
+            if (_abandoned >= MaxAbandoned)
+            {
+                throw new ValidationException($"{MaxAbandoned} expression evaluations of this agent did not stop. No expression is evaluated any more.");
+            }
+        }
+
         var (engine, _) = NewSession();
-        var result = Task.Run(() => engine.ExecuteAsync(expression)).GetAwaiter().GetResult();
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        CellResult result;
+        AgentContext.EvaluatingExpression = true;
+        try
+        {
+            result = Task.Run(() => engine.ExecuteAsync(expression)).GetAwaiter().GetResult();
+        }
+        finally
+        {
+            AgentContext.EvaluatingExpression = false;
+        }
+
+        var abandoned = engine.IsAbandoned;
+        if (abandoned || started.Elapsed >= _timeout)
+        {
+            lock (_gate)
+            {
+                _failed.Add(expression);
+                if (abandoned)
+                {
+                    _abandoned++;
+                }
+            }
+        }
+
         return result.Status == ResultStatus.Complete
             ? result.Value
             : throw new ValidationException(result.Error);
@@ -95,7 +146,8 @@ internal sealed class ContextExpressions(Agent agent)
         });
         var engine = new RoslynExecutionEngine(globals, new ReplOptions
         {
-            CellTimeout = EvaluationTimeout,
+            CellTimeout = _timeout,
+            AbandonGrace = _abandonGrace,
             References = references,
             Imports = imports,
             Validator = validator,

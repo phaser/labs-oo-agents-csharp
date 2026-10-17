@@ -186,6 +186,26 @@ public class CellCodeValidatorTests
         Assert.Contains("infinite recursion", error.Message, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("var a = self; a.Greet(\"x\")")]
+    [InlineData("Func<string, string> f = self.Greet; f(\"x\")")]
+    [InlineData("new Func<string, string>(self.Greet)(\"x\")")]
+    [InlineData("var g = (Nooa.Tests.Runtime.ReplAgent r) => r.Greet(\"x\"); g(self)")]
+    [InlineData("self?.Greet(\"x\")")]
+    public void Validate_ForbiddenMethodByAliasMethodGroupOrDelegate_Rejects(string code) =>
+        Reject(code, new CellValidatorOptions { ForbiddenSelfCalls = ["Greet"] });
+
+    [Theory]
+    [InlineData("self.Context")]
+    [InlineData("var c = self.Events;")]
+    [InlineData("self.ContextManager")]
+    public void Validate_HiddenMemberOfTheAgentBase_Rejects(string code)
+    {
+        var error = Reject(code);
+
+        Assert.Contains("hidden", error.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
     [Fact]
     public void Validate_SelfCallOfOtherMethod_Passes()
     {
