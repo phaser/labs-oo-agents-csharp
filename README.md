@@ -20,8 +20,11 @@ dotnet test --solution Nooa.slnx -c Release --filter "Category!=Live"
 The tests run offline. They need no network and no API key.
 
 To use the NuGet package, run `dotnet add package Nooa`. One package holds the library and the source generator (as an analyzer).
-The package is not on nuget.org yet. Build it with `dotnet pack src/Nooa -c Release -o artifacts/packages` and add that folder as a package source.
+The package is an alpha (prerelease). Use `dotnet add package Nooa --prerelease`.
+To test a local build, run `dotnet pack src/Nooa -c Release -o artifacts/packages` and add that folder as a package source.
 `examples/PackageConsumer` shows this: a console app with one `[Agentic]` agent that restores `Nooa` from the local feed and runs offline.
+Pass the packed version: `dotnet run --project examples/PackageConsumer -p:NooaVersion=<version>`.
+The version is the name of the `.nupkg` file after `Nooa.`.
 
 To work on this repo instead, reference `src/Nooa/Nooa.csproj` and the analyzer `src/Nooa.Generators/Nooa.Generators.csproj`
 (`OutputItemType="Analyzer" ReferenceOutputAssembly="false"`). `examples/Quickstart/Quickstart.csproj` shows the setup.
@@ -87,6 +90,18 @@ inside your process. That code has the rights of your process.
 
 Credentials come from the environment or from `secrets.yaml` under the trust rules. Never commit a key.
 Traces scrub known secret patterns, but you must still not put secrets in prompts.
+
+## Release
+
+The version comes from the git tag (MinVer). A commit before any tag gets `0.1.0-alpha.0.N`.
+
+1. Make sure `main` is green.
+2. Create a tag: `git tag v0.1.0-alpha.N`.
+3. Push the tag: `git push origin v0.1.0-alpha.N`.
+4. The `publish` workflow tests, packs and pushes to nuget.org. It needs the `NUGET_API_KEY` secret.
+5. Check the package on nuget.org.
+
+A published version cannot be deleted. You can only unlist it. Do not reuse a tag.
 
 ## Credit and license
 
