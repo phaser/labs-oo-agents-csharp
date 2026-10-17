@@ -463,3 +463,9 @@ v1 covers: errors and layered config with trust rules (T03), event IR, Doc() and
 **Security position (D12):** the in-process REPL is not a security boundary. The validator is a guardrail. A process sandbox is B01.
 
 **Backlog after v1 (B01 to B14, see `docs/port-plan.md` section 4):** B01 process sandbox, B02 MCP client, B03 decisions and `DecideStrategy`, B04 summarization, B05 ATIF export, B06 skills and slash commands, B07 channels and `InteractiveAgent`, B08 admission control, B09 cache boundaries and Anthropic/Responses adapters, B10 CodeActV2, Reflexion and PurePython, B11 media, B12 memory, B13 CLI, ACP, bench and viewer, B14 `PFormat` on an endless lazy sequence.
+
+## NuGet package (T23)
+
+- One package `Nooa` 0.1.0. The source generator is packed into `analyzers/dotnet/cs` (a `None` item that points at the generator build output, plus a `ProjectReference` with `ReferenceOutputAssembly=false` for the build order). Pack with `-c Release`: the item path uses `$(Configuration)`.
+- `examples/PackageConsumer` restores `Nooa` from `artifacts/packages` (git-ignored) with its own `nuget.config` and package source mapping. It is not in `Nooa.slnx`, so the solution build does not need the package. CI packs and runs it on the Linux leg only. It is offline with `FakeLlmClient`, and calls a real model when a key is set.
+- Not published to nuget.org. That needs a user decision (name, API key).

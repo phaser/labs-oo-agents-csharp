@@ -5,6 +5,37 @@
     <RootNamespace>Nooa</RootNamespace>
   </PropertyGroup>
 
+  <!-- NuGet package. The version is the single place that sets the package version. -->
+  <PropertyGroup>
+    <PackageId>Nooa</PackageId>
+    <Version>0.1.0</Version>
+    <Authors>Cristian Bidea</Authors>
+    <Description>NOOA for C#: an agent is a class. Fields are state, methods are capabilities, doc comments are prompts. A partial method marked [Agentic] is run by a model loop. The source generator ships inside this package.</Description>
+    <PackageTags>agents;llm;ai;source-generator</PackageTags>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/phaser/labs-oo-agents-csharp</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/phaser/labs-oo-agents-csharp</PackageProjectUrl>
+    <!-- SourceLink is built into the .NET SDK. The symbols go to a .snupkg. -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../NOTICE" Pack="true" PackagePath="/" />
+    <!-- The generator is an analyzer of this package, not a library and not a dependency. -->
+    <ProjectReference Include="../Nooa.Generators/Nooa.Generators.csproj" ReferenceOutputAssembly="false" PrivateAssets="all" />
+    <None Include="../Nooa.Generators/bin/$(Configuration)/netstandard2.0/Nooa.Generators.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+  </ItemGroup>
+
   <ItemGroup>
     <InternalsVisibleTo Include="Nooa.Tests" />
   </ItemGroup>

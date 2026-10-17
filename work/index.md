@@ -72,7 +72,7 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
-| [T23 NuGet package and a package consumer example](t23-nupkg.md) | — | — | todo | 2026-10-17 |
+| [T23 NuGet package and a package consumer example](030-nupkg.md) | [#30](https://github.com/phaser/labs-oo-agents-csharp/pull/30) | — | merged | 2026-10-17 |
 
 ## Backlog (after v1)
 

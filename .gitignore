@@ -17,3 +17,6 @@ worktrees/
 .env
 .DS_Store
 *.log
+
+# Packages
+artifacts/
