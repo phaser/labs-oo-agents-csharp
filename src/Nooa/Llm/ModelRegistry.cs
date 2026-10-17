@@ -28,8 +28,7 @@ namespace Nooa.Llm;
 /// </para>
 /// <list type="bullet">
 /// <item>An untrusted layer cannot replace or remove an alias that a trusted layer defined. The entry is ignored and a warning names the alias.</item>
-/// <item>An alias that only untrusted layers define cannot combine <c>api_key_env</c> with <c>api_base</c> or <c>endpoint</c>. The <c>api_key_env</c> is dropped. The remaining entry sends no key.</item>
-/// <item>An <c>api_key_env</c> from an untrusted layer must be credential-shaped and not on the denylist, as for <c>secrets.yaml</c>. Otherwise it is dropped.</item>
+/// <item>An untrusted layer never sets <c>api_key_env</c>. The field is dropped with a warning. An alias that only untrusted layers define has no key, unless it uses the default OpenAI host and <c>OPENAI_API_KEY</c>. A route prefix that implies a host (<c>nvidia_nim/</c>) also gets no key.</item>
 /// </list>
 /// <para>
 /// A key is sent only to the host that the alias names. No key falls back to another variable when the named
@@ -48,8 +47,6 @@ public sealed class ModelRegistry : ILlmClientResolver
         ["NVIDIA_INFERENCE_API_KEY"] = "NVIDIA_INTERNAL_API_KEY",
         ["NVIDIA_INTERNAL_API_KEY"] = "NVIDIA_INFERENCE_API_KEY",
     };
-
-    private static readonly HashSet<string> _hostFields = ["api_base", "endpoint"];
 
     private readonly Func<string, string?, string, IChatClient>? _chatClientFactory;
     private readonly ILogger? _logger;
@@ -187,7 +184,7 @@ public sealed class ModelRegistry : ILlmClientResolver
         var (model, defaultBase) = OpenAiChatClientFactory.ParseModel(config.ModelName ?? alias);
         var apiBase = config.ApiBase ?? defaultBase;
         var apiKey = ResolveApiKey(alias, config, hasCustomRoute: apiBase is not null);
-        _logger?.LogInformation("LLM registry hit for {Alias}: model {Model}, api_base {ApiBase}", alias, model, apiBase);
+        _logger?.LogDebug("LLM registry hit for {Alias}: model {Model}, host {Host}", alias, model, apiBase is null ? "default" : new Uri(apiBase).Authority);
 
         var chat = _chatClientFactory is null
             ? OpenAiChatClientFactory.Create(model, apiBase, apiKey)
@@ -196,29 +193,15 @@ public sealed class ModelRegistry : ILlmClientResolver
         return new ChatClientLlmClient(chat, options, logger: _logger);
     }
 
+    // An untrusted layer never selects an API key: a key that no trusted layer named is not sent to any host.
     private static IReadOnlyDictionary<string, object?> SanitizeUntrusted(string name, IReadOnlyDictionary<string, object?> raw, ILogger? logger)
     {
-        if (!raw.TryGetValue("api_key_env", out var keyEnv) || keyEnv is null)
+        if (!raw.ContainsKey("api_key_env"))
         {
             return raw;
         }
 
-        string? reason = null;
-        if (_hostFields.Any(f => raw.GetValueOrDefault(f) is not null))
-        {
-            reason = "it also sets api_base or endpoint";
-        }
-        else if (keyEnv is not string envName || SecretEnvDenylist.IsDenied(envName) || !SecretEnvDenylist.IsCredentialShaped(envName))
-        {
-            reason = "only credential names (*_API_KEY, *_KEY, *_TOKEN, *_SECRET, *_PASSWORD) are accepted from an untrusted file";
-        }
-
-        if (reason is null)
-        {
-            return raw;
-        }
-
-        logger?.LogWarning("Model {Alias} in an untrusted file: api_key_env is dropped, because {Reason}", name, reason);
+        logger?.LogWarning("Model {Alias} in an untrusted file: api_key_env is dropped; only a trusted layer can select an API key", name);
         return raw.Where(kv => kv.Key != "api_key_env").ToDictionary(kv => kv.Key, kv => kv.Value, StringComparer.Ordinal);
     }
 

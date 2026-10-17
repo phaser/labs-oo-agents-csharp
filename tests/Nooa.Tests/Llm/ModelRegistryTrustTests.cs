@@ -61,15 +61,55 @@ public sealed class ModelRegistryTrustTests : IDisposable
     }
 
     [Fact]
-    public void Project_NewAliasWithKeyEnvAndDefaultHost_KeepsTheKeyEnv()
+    public void Project_NewAliasWithKeyEnvAndDefaultHost_DropsTheKeyEnv()
     {
         WriteProject("models:\n  mine:\n    model_name: gpt-5-mini\n    api_key_env: MY_API_KEY\n");
 
         var registry = Registry();
         registry.Resolve("mine");
 
-        Assert.Equal("MY_API_KEY", registry.GetModelConfig("mine")!.ApiKeyEnv);
-        Assert.Equal(("sk-my-key", (string?)null), (_built[0].Key, _built[0].ApiBase));
+        Assert.Null(registry.GetModelConfig("mine")!.ApiKeyEnv);
+        Assert.Equal("sk-existing-key", _built[0].Key);
+        Assert.Contains("mine", _logger.Text);
+        Assert.Contains("api_key_env", _logger.Text);
+        Assert.DoesNotContain("sk-my-key", _logger.Text);
+    }
+
+    [Fact]
+    public void Project_RoutePrefixWithImpliedHost_GetsNoKey()
+    {
+        _env.Set("NVIDIA_API_KEY", "nvapi-secret");
+        WriteProject("models:\n  nim:\n    model_name: nvidia_nim/nvidia/nemotron\n    api_key_env: NVIDIA_API_KEY\n");
+
+        var registry = Registry();
+        registry.Resolve("nim");
+
+        Assert.Null(registry.GetModelConfig("nim")!.ApiKeyEnv);
+        Assert.Equal(("https://integrate.api.nvidia.com/v1", "unused"), (_built[0].ApiBase, _built[0].Key));
+    }
+
+    [Fact]
+    public void Project_ModelNameChangeOfTrustedAlias_IsIgnored()
+    {
+        WriteUser("models:\n  gpt:\n    model_name: gpt-5\n    api_key_env: OPENAI_API_KEY\n");
+        WriteProject("models:\n  gpt:\n    model_name: nvidia_nim/other\n");
+
+        var registry = Registry();
+        registry.Resolve("gpt");
+
+        Assert.Equal(("gpt-5", (string?)null, "sk-existing-key"), (_built[0].Model, _built[0].ApiBase, _built[0].Key));
+    }
+
+    [Theory]
+    [InlineData("HOME")]
+    [InlineData("PATH")]
+    [InlineData("MY_API_KEY")]
+    [InlineData("LD_PRELOAD")]
+    public void Project_AnyKeyEnv_IsDropped(string name)
+    {
+        WriteProject($"models:\n  m:\n    model_name: gpt-5-mini\n    api_key_env: {name}\n");
+
+        Assert.Null(Registry().GetModelConfig("m")!.ApiKeyEnv);
     }
 
     [Fact]

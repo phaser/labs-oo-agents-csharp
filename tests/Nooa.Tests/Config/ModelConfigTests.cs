@@ -88,6 +88,35 @@ public class ModelConfigTests
             ModelConfig.FromRegistry("a", new Dictionary<string, object?> { ["api_base"] = apiBase }));
     }
 
+    [Theory]
+    [InlineData("https://user:pass@host.example.com/v1")]
+    [InlineData("https://host.example.com/v1?api_key=sk-secret")]
+    [InlineData("https://host.example.com/v1#frag")]
+    public void FromRegistry_UrlWithCredentialParts_ThrowsWithoutEchoingTheUrl(string url)
+    {
+        foreach (var field in new[] { "api_base", "endpoint" })
+        {
+            var e = Assert.Throws<ConfigValidationException>(() =>
+                ModelConfig.FromRegistry("a", new Dictionary<string, object?> { [field] = url }));
+
+            Assert.Contains(field, e.Message);
+            Assert.DoesNotContain("pass", e.Message.Replace("must not contain", ""));
+            Assert.DoesNotContain("sk-secret", e.Message);
+        }
+    }
+
+    [Fact]
+    public void ToString_RedactsUserInfoAndQueryAddedWithWith()
+    {
+        var config = ModelConfig.FromRegistry("a", new Dictionary<string, object?>()) with { ApiBase = "https://u:pw-secret@h.example.com/v1?key=sk-secret" };
+
+        var text = config.ToString();
+
+        Assert.DoesNotContain("pw-secret", text);
+        Assert.DoesNotContain("sk-secret", text);
+        Assert.Contains("h.example.com/v1", text);
+    }
+
     [Fact]
     public void ToString_NeverPrintsExtraValues()
     {

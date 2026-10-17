@@ -22,7 +22,7 @@ namespace Nooa.Config;
 /// </para>
 /// <para>
 /// <see cref="ApiKeyEnv"/> is the name of an environment variable, never a key. A literal key in the YAML file is not
-/// read. <see cref="ToString"/> prints the names of the <see cref="Extra"/> keys and never their values.
+/// read. <c>api_base</c> and <c>endpoint</c> must not carry user info, a query string or a fragment. <see cref="ToString"/> prints the names of the <see cref="Extra"/> keys and never their values.
 /// </para>
 /// </remarks>
 public sealed partial record ModelConfig
@@ -129,10 +129,23 @@ public sealed partial record ModelConfig
             throw new ConfigValidationException($"Model '{name}' has an invalid api_key_env: expected a shell-style environment variable name");
         }
 
-        if (config.ApiBase is { } apiBase
-            && !(Uri.TryCreate(apiBase, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https"))
+        foreach (var (field, url) in new[] { ("api_base", config.ApiBase), ("endpoint", config.Endpoint) })
         {
-            throw new ConfigValidationException($"Model '{name}' has an invalid api_base: expected an http or https URL");
+            if (url is null)
+            {
+                continue;
+            }
+
+            if (!(Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https"))
+            {
+                throw new ConfigValidationException($"Model '{name}' has an invalid {field}: expected an http or https URL");
+            }
+
+            // A credential in the URL would reach logs and ToString. Put keys in the environment (api_key_env).
+            if (uri.UserInfo.Length > 0 || uri.Query.Length > 0 || uri.Fragment.Length > 0)
+            {
+                throw new ConfigValidationException($"Model '{name}' has an invalid {field}: it must not contain user info, a query string or a fragment");
+            }
         }
 
         return config;
@@ -141,12 +154,16 @@ public sealed partial record ModelConfig
     /// <summary>Prints the typed fields and the names of the extra keys. No value of <see cref="Extra"/> appears.</summary>
     private bool PrintMembers(StringBuilder builder)
     {
-        builder.Append(CultureInfo.InvariantCulture, $"ModelName = {ModelName}, ApiBase = {ApiBase}, Endpoint = {Endpoint}, ApiKeyEnv = {ApiKeyEnv}, ")
+        builder.Append(CultureInfo.InvariantCulture, $"ModelName = {ModelName}, ApiBase = {Redact(ApiBase)}, Endpoint = {Redact(Endpoint)}, ApiKeyEnv = {ApiKeyEnv}, ")
             .Append(CultureInfo.InvariantCulture, $"ClientType = {ClientType}, ApiStyle = {ApiStyle}, ContextWindow = {ContextWindow}, MaxTokens = {MaxTokens}, ")
             .Append(CultureInfo.InvariantCulture, $"Temperature = {Temperature}, TopP = {TopP}, ReasoningDefault = {ReasoningDefault}, ReasoningLevel = {ReasoningLevel}, ")
             .Append(CultureInfo.InvariantCulture, $"ReasoningLevels = [{string.Join(", ", ReasoningLevels?.Keys ?? [])}], ExtraKeys = [{string.Join(", ", Extra.Keys)}]");
         return true;
     }
+
+    // A record can be changed with `with`, which skips validation, so printing drops user info, query and fragment.
+    private static string? Redact(string? url) =>
+        url is not null && Uri.TryCreate(url, UriKind.Absolute, out var uri) ? $"{uri.Scheme}://{uri.Authority}{uri.AbsolutePath}" : url is null ? null : "<invalid>";
 
     private static ConfigValidationException Invalid(string name, string key, string expected, object value) =>
         new($"Model '{name}' has an invalid {key}: expected {expected}, got {value.GetType().Name}");
