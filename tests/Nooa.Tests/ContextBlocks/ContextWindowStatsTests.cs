@@ -80,6 +80,8 @@ public class ContextWindowStatsTests
         var text = Stats().Format();
 
         Assert.StartsWith("Context: awaiting first model response\n", text);
+        Assert.Contains("self.Events.Collapse(", text, StringComparison.Ordinal);
+        Assert.Contains("Doc(self.Context)", text, StringComparison.Ordinal);
         Assert.Contains("Events.Collapse", text);
     }
 

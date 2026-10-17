@@ -38,6 +38,9 @@ public sealed class ContextManager
     private readonly HashSet<string> _disabled = [];
     private readonly Dictionary<string, object?> _resolved = [];
 
+    /// <summary>Evaluates <see cref="Context.Expr"/> blocks. The agent sets it. Without it an expression block is refused.</summary>
+    internal ContextExpressions? Expressions { get; set; }
+
     /// <summary>The keys of the protected blocks.</summary>
     public IReadOnlyCollection<string> ProtectedKeys => _protected;
 
@@ -94,7 +97,7 @@ public sealed class ContextManager
 
     /// <summary>
     /// Sets a block in the volatile partition. A null value disables the key and removes an unprotected block.
-    /// A <see cref="Context"/> sets its own content and partition, and a <see cref="DynamicContext"/> sets a provider.
+    /// A <see cref="Context"/> sets its own content (a value, a provider or an expression) and partition, and a <see cref="DynamicContext"/> sets a provider.
     /// </summary>
     /// <exception cref="ProtectedBlockException">The key is protected and the value is not null.</exception>
     public void Set(string key, object? value)
@@ -108,6 +111,12 @@ public sealed class ContextManager
                     _resolved.Remove(key);
                 }
 
+                return;
+            case Context { Expression: { } expression, Prefix: true }:
+                SetStaticProvider(key, BindExpression(expression));
+                return;
+            case Context { Expression: { } expression }:
+                SetDynamicProvider(key, BindExpression(expression));
                 return;
             case Context { Provider: { } provider, Prefix: true }:
                 SetStaticProvider(key, provider);
@@ -304,6 +313,10 @@ public sealed class ContextManager
             _resolved[key] = value;
         }
     }
+
+    private Func<object?> BindExpression(string expression) =>
+        (Expressions ?? throw new InvalidOperationException("This context manager has no agent, so it cannot evaluate an expression block."))
+        .Bind(expression);
 
     private void Store(string key, ContextBlockEntry entry, bool refuseProtected)
     {

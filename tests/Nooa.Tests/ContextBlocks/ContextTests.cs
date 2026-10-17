@@ -41,4 +41,29 @@ public class ContextTests
 
     [Fact]
     public void FromProvider_Null_Throws() => Assert.Throws<ArgumentNullException>(() => Context.FromProvider(null!));
+
+    [Fact]
+    public void Expr_IsDynamicWithTheTextAndNoProvider()
+    {
+        var context = Context.Expr("self.Count", prefix: true);
+
+        Assert.True(context.IsDynamic);
+        Assert.True(context.Prefix);
+        Assert.Equal("self.Count", context.Expression);
+        Assert.Null(context.Value);
+        Assert.Null(context.Provider);
+        Assert.Null(context.ToDynamicContext());
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("  ")]
+    public void Expr_Blank_Throws(string text) => Assert.Throws<ArgumentException>(() => Context.Expr(text));
+
+    [Fact]
+    public void Expr_Null_Throws() => Assert.Throws<ArgumentNullException>(() => Context.Expr(null!));
+
+    [Fact]
+    public void Expr_TooLong_Throws() =>
+        Assert.Throws<ArgumentException>(() => Context.Expr(new string('1', Context.MaxExpressionLength + 1)));
 }

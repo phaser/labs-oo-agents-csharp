@@ -78,7 +78,9 @@ public abstract class Agent : IAgenticTarget
         Truncation = TruncationConfig.Default.MergeWith(options.Truncation);
         Execution = options.Execution ?? new ExecutionConfig();
 
-        ContextManager = new ContextManager();
+        ContextManager = new ContextManager { Expressions = new ContextExpressions(this) };
+        Context = new ContextApi(this);
+        Events = new EventsApi(this);
         ContextManager.SetStaticProtected(ContextManager.SystemPromptKey, ResolveSystemPrompt);
         ContextManager.SetStaticProtected(ContextManager.SelfKey, () => AgentDocs.Doc(GetType()));
         ContextManager.SetDynamicProtected(
@@ -117,6 +119,20 @@ public abstract class Agent : IAgenticTarget
     /// <summary>The store of the context blocks, with the protected blocks <c>system_prompt</c>, <c>self</c> and <c>state</c>.</summary>
     [Hidden]
     public ContextManager ContextManager { get; }
+
+    /// <summary>
+    /// The model-facing API for the context blocks. It is hidden from the model by default. A subclass opts in with
+    /// <c>public new ContextApi Context =&gt; base.Context;</c>.
+    /// </summary>
+    [Hidden]
+    public ContextApi Context { get; }
+
+    /// <summary>
+    /// The model-facing API to query and collapse past events. It is hidden from the model by default. A subclass opts in with
+    /// <c>public new EventsApi Events =&gt; base.Events;</c>.
+    /// </summary>
+    [Hidden]
+    public EventsApi Events { get; }
 
     /// <summary>Formats the context blocks into the messages of a request.</summary>
     [Hidden]

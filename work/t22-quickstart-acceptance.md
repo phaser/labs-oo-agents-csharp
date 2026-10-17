@@ -26,6 +26,7 @@ Upstream (pin in the plan):
 - [ ] Port quickstart 01–08 to `examples/Quickstart`
 - [ ] Record fake responses; one offline acceptance test per quickstart
 - [ ] Live smoke run of all 8 against a real model; record retry counts and cost in knowledge/
+- [ ] Make the `RoslynExecutionEngineTests` timeout tests stable under a loaded full run (they fail now and then on main)
 - [ ] README: install, first agent, security note (D12), upstream credit
 - [ ] Update `docs/porting-notes.md` and close the v1 milestone
 

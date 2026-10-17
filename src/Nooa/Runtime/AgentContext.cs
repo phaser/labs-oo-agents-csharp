@@ -21,6 +21,7 @@ internal static class AgentContext
     private static readonly AsyncLocal<string?[]?> _callStack = new();
     private static readonly AsyncLocal<string[]?> _generationIds = new();
     private static readonly AsyncLocal<bool> _inGenerationSession = new();
+    private static readonly AsyncLocal<bool> _evaluatingExpression = new();
     private static readonly AsyncLocal<CurrentCall?> _currentCall = new();
     private static readonly AsyncLocal<ILlmClient?> _currentLlm = new();
     private static readonly AsyncLocal<GenerationStrategy?> _currentStrategy = new();
@@ -34,6 +35,9 @@ internal static class AgentContext
 
     /// <summary>True inside a generation session. A nested call then runs inline and does not take the lock.</summary>
     public static bool InGenerationSession { get => _inGenerationSession.Value; set => _inGenerationSession.Value = value; }
+
+    /// <summary>True while a context expression runs. An agentic call that starts in that scope fails.</summary>
+    public static bool EvaluatingExpression { get => _evaluatingExpression.Value; set => _evaluatingExpression.Value = value; }
 
     /// <summary>The call that the strategy generates.</summary>
     public static CurrentCall? CurrentCall { get => _currentCall.Value; set => _currentCall.Value = value; }

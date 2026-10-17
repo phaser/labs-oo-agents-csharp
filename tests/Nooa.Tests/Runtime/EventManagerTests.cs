@@ -272,6 +272,21 @@ public class EventManagerTests
     }
 
     [Fact]
+    public void Filter_CatastrophicRegex_RunsInLinearTimeAndFindsNothing()
+    {
+        var manager = new EventManager();
+        manager.Add(User(new string('a', 5000) + "!"));
+
+        Assert.Empty(manager.Filter(query: "^(a+)+$", regex: true));
+    }
+
+    [Theory]
+    [InlineData("(?<=a)b")]
+    [InlineData(@"(a)\1")]
+    public void Filter_RegexWithLookaroundOrBackreference_IsNotSupported(string pattern) =>
+        Assert.Throws<NotSupportedException>(() => new EventManager().Filter(query: pattern, regex: true));
+
+    [Fact]
     public void Filter_SearchesFieldsNotMetadata()
     {
         var manager = new EventManager();

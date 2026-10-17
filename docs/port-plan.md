@@ -143,7 +143,7 @@ Each dependency is license-checked when its task adds it.
 | B11 | Media (`Image`, `Audio`, …) and `show()` | `media.py`, `runtime/media_capture.py` |
 | B12 | Memory package | `packages/nooa-memory` |
 | B13 | CLI, ACP, bench, viewer, trace explorer | `packages/*`, `viewer/`, `trace_explorer/` |
-| B14 | `PFormat` stops on an endless lazy sequence (T17 guards the CodeAct path only) | `utils/pformat.py` |
+| B14 | `PFormat` does not return on an endless lazy sequence (T17 guards the CodeAct path only) | `utils/pformat.py` |
 
 ## 5. Milestones and tasks
 

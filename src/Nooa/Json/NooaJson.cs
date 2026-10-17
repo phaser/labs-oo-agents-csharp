@@ -4,6 +4,7 @@
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Json.Serialization.Metadata;
 
 namespace Nooa.Json;
 
@@ -14,9 +15,13 @@ namespace Nooa.Json;
 /// </summary>
 public static class NooaJson
 {
-    /// <summary>The shared options. Do not change them after first use.</summary>
+    /// <summary>
+    /// The shared options. Do not change them after first use. The type info resolver is set at creation: a library that
+    /// builds a schema from these options sets a missing resolver, and that fails once any value has been serialized.
+    /// </summary>
     public static JsonSerializerOptions Options { get; } = new()
     {
+        TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         AllowOutOfOrderMetadataProperties = true,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) },
