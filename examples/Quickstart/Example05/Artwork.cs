@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Ported from: src/nooa/util/quickstart.py
 
-namespace Nooa.Tests.Strategies.Acceptance;
+namespace Nooa.Examples.Quickstart.Example05;
 
 /// <summary>A piece of art with an appraisal.</summary>
 public sealed class Artwork(string title, string artist, double appraisedValue)

@@ -6,7 +6,7 @@
 using Nooa.Strategies;
 using Nooa.Tools;
 
-namespace Nooa.Tests.Strategies.Acceptance;
+namespace Nooa.Examples.Quickstart.Example04;
 
 /// <summary>Agent demonstrating different strategy options.</summary>
 public partial class AnalysisAgent : Agent

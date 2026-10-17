@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Ported from: src/nooa/util/quickstart.py
 
-namespace Nooa.Tests.Strategies.Acceptance;
+namespace Nooa.Examples.Quickstart.Example05;
 
 /// <summary>A stock position with shares and price.</summary>
 public sealed class StockHolding(string symbol, int shares, double pricePerShare)

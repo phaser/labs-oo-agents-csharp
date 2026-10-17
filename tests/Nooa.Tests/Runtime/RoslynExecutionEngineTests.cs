@@ -16,6 +16,10 @@ public class RoslynExecutionEngineTests
     private static ReplOptions WithTestAssembly(ReplOptions? o = null) =>
         (o ?? new ReplOptions()) with { References = [typeof(ReplSpin).Assembly] };
 
+    // The cell time limit also covers the compile of the cell. A loaded CI runner can need more than a second
+    // for a first compile, so the timing tests use a limit that is wide against that.
+    private static readonly TimeSpan _wideTimeout = TimeSpan.FromSeconds(3);
+
     private static Task<CellResult> Run(RoslynExecutionEngine engine, string code) =>
         engine.ExecuteAsync(code, TestContext.Current.CancellationToken);
 
@@ -305,14 +309,14 @@ public class RoslynExecutionEngineTests
     [Fact]
     public async Task ExecuteAsync_Timeout_ReportsErrorAndKeepsPartialOutputAndSession()
     {
-        var engine = NewEngine(new ReplOptions { CellTimeout = TimeSpan.FromMilliseconds(300) });
+        var engine = NewEngine(new ReplOptions { CellTimeout = _wideTimeout });
         await Run(engine, "var kept = 1;");
 
         var result = await Run(engine, "Print(\"partial\"); await Task.Delay(Timeout.Infinite, Cancellation);");
         var after = await Run(engine, "kept");
 
         Assert.Equal(ResultStatus.Error, result.Status);
-        Assert.Contains("timed out after 0.3 seconds", result.Error);
+        Assert.Contains("timed out after 3 seconds", result.Error);
         Assert.Contains("partial", result.Stdout);
         Assert.Equal(1, after.Value);
     }
@@ -322,7 +326,7 @@ public class RoslynExecutionEngineTests
     {
         var engine = NewEngine();
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
-        cts.CancelAfter(TimeSpan.FromMilliseconds(300));
+        cts.CancelAfter(_wideTimeout);
 
         var result = await engine.ExecuteAsync("Print(\"partial\"); await Task.Delay(Timeout.Infinite, Cancellation);", cts.Token);
 
@@ -337,8 +341,8 @@ public class RoslynExecutionEngineTests
         ReplSpin.Stop = false;
         var engine = NewEngine(WithTestAssembly(new ReplOptions
         {
-            CellTimeout = TimeSpan.FromMilliseconds(200),
-            AbandonGrace = TimeSpan.FromMilliseconds(500),
+            CellTimeout = _wideTimeout,
+            AbandonGrace = TimeSpan.FromSeconds(1),
         }));
         try
         {

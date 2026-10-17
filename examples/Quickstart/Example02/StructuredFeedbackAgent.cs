@@ -5,7 +5,7 @@
 
 using Nooa.Strategies;
 
-namespace Nooa.Tests.Strategies.Acceptance;
+namespace Nooa.Examples.Quickstart.Example02;
 
 /// <summary>Agent for analyzing customer feedback with structured output.</summary>
 public partial class StructuredFeedbackAgent(AgentOptions? options = null) : Agent(options)
