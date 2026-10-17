@@ -299,3 +299,13 @@ Not applicable (Python only): `test_annotated_types`, `test_dataclass_properties
 
 **Tests:** `ModelRegistryTests` (ported from `test_model_registry.py`), `ModelRegistryTrustTests` (new), `OpenAiChatClientFactoryTests` (wire, no network), `ReasoningConfigTests` (from `test_reasoning_levels.py`), `ContextLimitsTests`, `ModelConfigTests` and `ResolvedConfigTests` (from `test_resolved_config.py`), `QuickstartTests`, and four more chain tests in `LlmConfigTests` (from `test_llm_config_chain.py`).
 **Tests skipped:** concurrency and global-state tests (`test_concurrent_get_llm_client_during_reload_is_safe`, `test_reload_updates_in_place`, `test_no_args_marks_loaded`, `test_triggers_auto_load`: the snapshot has no global state); decision-model tests; litellm passthrough, `drop_params` and `cache_breakpoint` tests; `test_reasoning_levels.py` tests of `CompletionClient`/`ResponsesClient` dispatch, route override and `FakeLLMClient`; `test_reasoning_levels_wire.py` and the skill-example test (litellm, skills).
+
+## TodoManager (`tools/todo.py`, T21)
+
+- **Types:** plain classes `Todo`, `TodoComment`, `TodoManager` in `Nooa.Tools`. No `Skill` base class: `attach`, `detach` and `__nosnapshot__` are not ported. `TodoRef` (implicit from `Todo` or `string`) replaces the `Todo | str` arguments.
+- **Snapshot (D11):** `[Snapshotable]` plus a converter. The state is `{todos, active_id}` through `NooaJson.Options`, the same as `to_dict`. `Restore` is atomic and throws `DeserializationException`. The file never names a type. Migrations stay: `notes` to `description`, a status other than `done` to `open`, a missing comment ID.
+- **Status:** `TodoStatus` is an enum, so upstream tests for an invalid status (`blocked`) are dropped. `update` takes optional typed arguments. Unknown keyword names have no C# meaning.
+- **Vars:** `Dictionary<string, JsonNode?>`. Values must be JSON-like (`SnapshotValues.ToNode`). An unserializable value is dropped silently, as upstream. `add(**vars)` is the `vars` dictionary argument. `get_var` returns a `JsonNode`.
+- **Not ported:** legacy `notes` property and `add(notes=...)`/`update(notes=...)` aliases (Python compatibility only). The `Todo.v` proxy waits for T15 (`PersistentVars`). `test_snapshot_vars.py` and the `serialize`/`deserialize` envelope tests of `test_todo_status.py` serve the Python object model.
+- **Errors:** upstream `ValueError` becomes `ValidationException`. A bad `status()` limit throws `ArgumentOutOfRangeException`.
+- **Text:** status lengths count UTF-16 units. A cut never splits a surrogate pair.

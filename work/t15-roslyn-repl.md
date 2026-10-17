@@ -42,3 +42,5 @@ Upstream (pin in the plan):
 Not a security boundary (D12). Document this in the README and in the type's XML doc.
 
 From T07 (storage): `storage/persistent_vars.py` and `storage/snapshot_vars.py` (REPL variables in snapshots) belong here. Store them through `IStorageManager.SaveSnapshotJson`. Values are JSON only (D11).
+
+From T21: `Todo.v` (the `PersistentVars` attribute proxy over `Todo.Vars`, upstream `todo.py` `Todo.v`) is not ported. Add it with the REPL persistent vars, with the proxy tests from `src/nooa/tools/tests/test_todo_vars.py` and `test_todo_status.py` (reserved names `keys`, `items`, `get`, `set`, `clear`). `Todo.Vars` (`Dictionary<string, JsonNode?>`), `Todo.SetVar`, `TodoManager.SetVar/GetVar/DelVar` exist.
