@@ -57,7 +57,7 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
-| [T20 ShellTools](t20-shell-tools.md) | — | — | open | 2026-10-17 |
+| [T20 ShellTools](18-shell-tools.md) | [#18](https://github.com/phaser/labs-oo-agents-csharp/pull/18) | — | open | 2026-10-17 |
 | [T21 TodoManager](15-todo-manager.md) | — | — | open | 2026-10-17 |
 
 ## M7 — Acceptance
