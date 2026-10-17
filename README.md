@@ -52,7 +52,9 @@ Console.WriteLine(await agent.AnalyzeFeedbackAsync("Great product, but shipping 
 ## Quickstart examples
 
 `examples/Quickstart` has the eight upstream quickstarts. Each one runs against a real model and costs money.
-Set `NVIDIA_API_KEY`, `OPENAI_API_KEY` or `NVIDIA_INFERENCE_API_KEY`. Then run:
+Set `NVIDIA_API_KEY`, `OPENAI_API_KEY` or `NVIDIA_INFERENCE_API_KEY`.
+For another OpenAI-compatible endpoint, set `OPENAI_API_KEY` to its key, `OPENAI_BASE_URL` to its URL and `NOOA_MODEL` to its model name. The URL must be https, or http to a loopback host.
+Then run:
 
 ```bash
 dotnet run --project examples/Quickstart -- 1     # one example, 1 to 8

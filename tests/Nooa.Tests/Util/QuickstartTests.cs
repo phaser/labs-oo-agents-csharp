@@ -52,6 +52,47 @@ public class QuickstartTests
         Assert.Equal(("azure/openai/gpt-5-mini", "https://inference-api.nvidia.com/v1", "gk"), (picked.Model, picked.Base, picked.Key));
     }
 
+    [Theory]
+    [InlineData("http://127.0.0.1:11435/v1")]
+    [InlineData("http://localhost:8080/v1")]
+    [InlineData("https://example.com/v1")]
+    public void CreateDefaultLlm_OpenAiBaseUrl_IsUsed(string baseUrl)
+    {
+        var picked = Pick(new() { ["OPENAI_API_KEY"] = "ok", ["OPENAI_BASE_URL"] = baseUrl });
+
+        Assert.Equal(("gpt-5-mini", baseUrl, "ok"), (picked.Model, picked.Base, picked.Key));
+    }
+
+    [Theory]
+    [InlineData("http://example.com/v1")]
+    [InlineData("https://user:secret@example.com/v1")]
+    [InlineData("ftp://127.0.0.1/v1")]
+    [InlineData("not a url")]
+    public void CreateDefaultLlm_UnsafeOpenAiBaseUrl_ThrowsWithoutTheValue(string baseUrl)
+    {
+        var e = Assert.Throws<ConfigValidationException>(
+            () => Pick(new() { ["OPENAI_API_KEY"] = "ok", ["OPENAI_BASE_URL"] = baseUrl }));
+
+        Assert.DoesNotContain(baseUrl, e.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CreateDefaultLlm_NooaModel_ReplacesTheRouteModel()
+    {
+        var picked = Pick(new() { ["OPENAI_API_KEY"] = "ok", ["NOOA_MODEL"] = "sonnet" });
+
+        Assert.Equal(("sonnet", (string?)null, "ok"), (picked.Model, picked.Base, picked.Key));
+        Assert.Equal("sonnet", picked.Name);
+    }
+
+    [Fact]
+    public void CreateDefaultLlm_OpenAiBaseUrlWithoutOpenAiKey_IsIgnored()
+    {
+        var picked = Pick(new() { ["NVIDIA_API_KEY"] = "nk", ["OPENAI_BASE_URL"] = "http://example.com/v1" });
+
+        Assert.Equal("https://integrate.api.nvidia.com/v1", picked.Base);
+    }
+
     [Fact]
     public void CreateDefaultLlm_EmptyKey_CountsAsUnset()
     {

@@ -3,6 +3,7 @@
 
 // Usage: dotnet run
 // Offline by default: a FakeLlmClient answers. Set NVIDIA_API_KEY, OPENAI_API_KEY or NVIDIA_INFERENCE_API_KEY to call a real model (costs money).
+// For another OpenAI-compatible endpoint, also set OPENAI_BASE_URL (https, or http to localhost) and NOOA_MODEL.
 
 using Nooa.Llm;
 using PackageConsumer;
