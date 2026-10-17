@@ -66,8 +66,8 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
 | [T22 Quickstart examples and acceptance](025-quickstart-acceptance.md) | [#25](https://github.com/phaser/labs-oo-agents-csharp/pull/25) | — | merged | 2026-10-17 |
-| [T22b Live smoke run of quickstart 01–08](t22b-live-smoke-run.md) | — | — | todo | 2026-10-17 |
+| [T22b Live smoke run of quickstart 01–08](t22b-live-smoke-run.md) | — | — | open | 2026-10-17 |
 
 ## Backlog (after v1)
 
-Items B01–B14 in [`docs/port-plan.md` §4](../docs/port-plan.md#4-v1-scope). Create a tracker item when one is scheduled.
+Items B01–B15 in [`docs/port-plan.md` §4](../docs/port-plan.md#4-v1-scope). Create a tracker item when one is scheduled.

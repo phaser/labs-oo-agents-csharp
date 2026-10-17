@@ -216,3 +216,10 @@ About 260 KiB managed per cell, and the growth per 100 cells rises from 19 to 31
 - `CellCodeValidator` keeps accepted cells in a chain and is not thread-safe. Use a new validator for each one-shot evaluation.
 - A property on a base class can be re-declared with `new` without `[Hidden]` to opt back in: `Attribute.IsDefined(member, ..., inherit: true)` reads the derived member only.
 - `Regex` with `RegexOptions.NonBacktracking` throws `NotSupportedException` for lookarounds and backreferences, and `RegexParseException` (an `ArgumentException`) for a bad pattern.
+
+## Live smoke run (T22b)
+
+- **Local Claude gateway:** `http://127.0.0.1:11435/v1` is OpenAI-compatible. The key is in the Keychain item `local-claude-api-key`. Tool calls work. `response_format` is refused with HTTP 400, so the Predict strategy (structured output) cannot run on it.
+- **Run it:** set `NOOA_LIVE_BASE_URL`, `NOOA_LIVE_MODEL=sonnet` and `NOOA_LIVE_API_KEY`, then `dotnet test --project tests/Nooa.Tests -c Release --filter "Category=Live"`.
+- **Result on 2026-10-17:** CodeAct, Template and the tracing and context examples pass (01, 03, 05, 06, 07, 08). An example takes 4 s to 42 s. A call has 8k to 27k prompt tokens, because the gateway adds the Claude Code system prompt.
+- **Risk:** the gateway runs Claude with tools on and `bypassPermissions`. Send it only harmless prompts.
