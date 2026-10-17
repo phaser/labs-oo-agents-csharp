@@ -8,6 +8,6 @@ public class NoSnapshotAttributeTests
     [Fact]
     public void Usage_TargetsClassesAndMethods()
     {
-        Assert.Equal(AttributeTargets.Class | AttributeTargets.Method, AgenticAttributeTests.AttributeUsageOf(typeof(NoSnapshotAttribute)).ValidOn);
+        Assert.Equal(AttributeTargets.Class | AttributeTargets.Method | AttributeTargets.Field | AttributeTargets.Property, AgenticAttributeTests.AttributeUsageOf(typeof(NoSnapshotAttribute)).ValidOn);
     }
 }

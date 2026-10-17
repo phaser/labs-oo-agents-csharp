@@ -92,6 +92,17 @@
 - xUnit v3 analyzer xUnit1051: pass `TestContext.Current.CancellationToken` to every method with a token. `Assert.Skip(reason)` skips a test at run time (use it for `Live` tests without environment variables).
 - Model output is untrusted input for `Regex`: use a `matchTimeoutMilliseconds` argument on `[GeneratedRegex]` and treat a `RegexMatchTimeoutException` as a parse failure.
 
+## Agent runtime (T12)
+
+- `AsyncLocal<T>` set inside an `async` method does not leak to the caller (the builder restores the execution context after the synchronous part). A scope API that must outlive the call (`using (agent.UseLlm(c)) { await ... }`) has to be a plain, non-async method that sets the value and returns an `IDisposable`.
+- Overloads `Set(string, object?)` and `Set(string, Func<object?>)` bind a lambda to `object` through its natural type. Use different method names for providers.
+- `System.Collections.Generic.OrderedDictionary<TKey,TValue>` (.NET 9+) keeps insertion order after removals. `Dictionary` does not promise it.
+- `RegexParseException` derives from `ArgumentException`. Use `Assert.ThrowsAny<ArgumentException>`.
+- xUnit1051 fires for a call to any method with an optional `CancellationToken`, also generated agentic methods. A file-level `#pragma warning disable xUnit1051` with a reason is the least noisy fix.
+- Snapshot of untrusted JSON: never let the file choose a type. Resolve the target member from the live object, take the type from its declaration, check an eligibility policy and an allowlist, read all values first and write after. STJ ignores unknown properties such as `$type`, but a `[JsonPolymorphic]` base with an unknown discriminator throws `NotSupportedException`.
+- `FieldInfo.SetValue` works on `readonly` instance fields and on auto-property backing fields (`<Name>k__BackingField`).
+- A generated partial agent class needs `partial` also for a primary-constructor subclass in tests. Test fixtures with only reflection access need `#pragma warning disable CS0649`.
+
 ## Model registry (T10)
 
 - YamlDotNet with `WithAttemptingUnquotedStringTypeDeserialization` returns the smallest fitting integral type (`Int16`, `Int32`, ...), and `double` for decimals. Convert numbers by value (`Convert.ToInt64` after an integral check), never with `is int`.

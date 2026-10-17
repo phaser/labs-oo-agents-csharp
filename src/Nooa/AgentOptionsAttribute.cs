@@ -4,11 +4,12 @@
 namespace Nooa;
 
 /// <summary>
-/// Static class-level agent settings. The generator records them in <see cref="AgentMetadata"/>.
+/// Static agent settings. On a class, the generator records them in <see cref="AgentMetadata"/>. On an agentic method,
+/// they override the class settings for that method.
 /// </summary>
-[AttributeUsage(AttributeTargets.Class, AllowMultiple = false, Inherited = false)]
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = false, Inherited = false)]
 public sealed class AgentOptionsAttribute : Attribute
 {
-    /// <summary>Model alias or model string for this agent class.</summary>
+    /// <summary>Model alias or model string for this agent class or method.</summary>
     public string? Llm { get; init; }
 }
