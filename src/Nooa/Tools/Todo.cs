@@ -5,6 +5,7 @@
 
 using System.Globalization;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Nooa.Errors;
 using Nooa.Storage;
 
@@ -60,6 +61,11 @@ public sealed class Todo
             return false;
         }
     }
+
+    /// <summary>A view over <see cref="Vars"/> that reads and writes the values (upstream <c>Todo.v</c>).</summary>
+    [Hidden]
+    [JsonIgnore]
+    public PersistentVars V => new(Vars);
 
     /// <summary>Return an independent deep copy.</summary>
     [Hidden]
