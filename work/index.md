@@ -51,7 +51,7 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
 | [T18 ContextApi, EventsApi, dynamic context](t18-context-events-api.md) | — | — | todo | 2026-10-16 |
-| [T19 Tracing](t19-tracing.md) | — | — | todo | 2026-10-16 |
+| [T19 Tracing](t19-tracing.md) | — | — | open | 2026-10-17 |
 
 ## M6 — Tools
 
