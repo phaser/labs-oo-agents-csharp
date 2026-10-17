@@ -22,6 +22,43 @@ public class OpenInferenceHooksTests
     private static string Tag(Activity span, string key) => SpanCapture.Tag(span, key);
 
     [Fact]
+    public async Task CodeActCell_EmitsAToolSpanUnderTheGenerationWithScrubbedCodeAndOutput()
+    {
+        using var capture = new SpanCapture();
+        var fake = new FakeLlmClient().EnqueueToolCall(
+            "execute_csharp", new { code = "Print(\"key sk-abcdefghijklmnopqrstuvwxyz123456\"); ReturnResult(3);" });
+        var agent = new Nooa.Tests.Strategies.CodeActAgent(
+            new AgentOptions { Llm = fake, DefaultStrategy = new Nooa.Strategies.CodeActStrategy(new Nooa.Config.CodeActConfig { Prefill = null }) });
+
+        Assert.Equal(3, await agent.AnswerAsync("q"));
+
+        var span = capture.Single("code_execution");
+        Assert.Equal("TOOL", Tag(span, "openinference.span.kind"));
+        Assert.Equal(ActivityStatusCode.Ok, span.Status);
+        Assert.Equal(capture.Single("generation").SpanId, span.ParentSpanId);
+        Assert.Contains("ReturnResult(3)", Tag(span, "input.value"), StringComparison.Ordinal);
+        Assert.DoesNotContain("abcdefghijklmnopqrstuvwxyz123456", Tag(span, "input.value"), StringComparison.Ordinal);
+        var output = JsonNode.Parse(Tag(span, "output.value"))!;
+        Assert.Equal("3", (string)output["returned_value"]!);
+        Assert.DoesNotContain("abcdefghijklmnopqrstuvwxyz123456", (string)output["stdout"]!, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CodeActCell_Failure_MarksTheToolSpanAsError()
+    {
+        using var capture = new SpanCapture();
+        var fake = new FakeLlmClient()
+            .EnqueueToolCall("execute_csharp", new { code = "throw new InvalidOperationException(\"x\");" }, id: "a")
+            .EnqueueToolCall("return_result", new { result = 1 }, id: "b");
+        var agent = new Nooa.Tests.Strategies.CodeActAgent(
+            new AgentOptions { Llm = fake, DefaultStrategy = new Nooa.Strategies.CodeActStrategy(new Nooa.Config.CodeActConfig { Prefill = null }) });
+
+        await agent.AnswerAsync("q");
+
+        Assert.Equal(ActivityStatusCode.Error, capture.Single("code_execution").Status);
+    }
+
+    [Fact]
     public async Task AgentCall_EmitsAnAgentSpanWithOpenInferenceAttributes()
     {
         using var capture = new SpanCapture();

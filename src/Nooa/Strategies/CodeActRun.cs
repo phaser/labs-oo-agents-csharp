@@ -481,7 +481,23 @@ internal sealed class CodeActRun(
     {
         // The receipt text must not change after a generation has seen it: a nested call may render it before the cell ends.
         SetResult(tag, toolCallId, CodeActPrompts.CellReceipt, ResultStatus.Running);
-        return await engine.ExecuteAsync(code, cancellationToken).ConfigureAwait(false);
+        var agent = runtime.Agent;
+        var hook = InstrumentationHooks.CallBefore(
+            agent.Logger, h => h.BeforeCodeExecution(agent, call.MethodName, code, toolCallId, runtime.GenerationId));
+        CellResult result;
+        try
+        {
+            result = await engine.ExecuteAsync(code, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception e)
+        {
+            var failed = new CellResult(engine.ExecutionCount, ResultStatus.Error, Error: e.GetType().Name);
+            InstrumentationHooks.CallAfter(agent.Logger, h => h.AfterCodeExecution(hook, agent, call.MethodName, failed));
+            throw;
+        }
+
+        InstrumentationHooks.CallAfter(agent.Logger, h => h.AfterCodeExecution(hook, agent, call.MethodName, result));
+        return result;
     }
 
     /// <summary>Ends the call when the cell was cancelled or abandoned. The output of the cell is already recorded.</summary>
