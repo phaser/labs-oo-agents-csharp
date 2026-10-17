@@ -223,3 +223,8 @@ About 260 KiB managed per cell, and the growth per 100 cells rises from 19 to 31
 - **Run it:** set `NOOA_LIVE_BASE_URL`, `NOOA_LIVE_MODEL=sonnet` and `NOOA_LIVE_API_KEY`, then `dotnet test --project tests/Nooa.Tests -c Release --filter "Category=Live"`.
 - **Result on 2026-10-17:** CodeAct, Template and the tracing and context examples pass (01, 03, 05, 06, 07, 08). An example takes 4 s to 42 s. A call has 8k to 27k prompt tokens, because the gateway adds the Claude Code system prompt.
 - **Risk:** the gateway runs Claude with tools on and `bypassPermissions`. Send it only harmless prompts.
+
+## NuGet local feed and the package cache (T23)
+
+- NuGet caches a package by id and version in `~/.nuget/packages`. If you pack again with the same version, the consumer restores the old copy. Delete `~/.nuget/packages/nooa` or raise the version before you test a changed package. A fresh CI runner has no cache.
+- To prove that a generator ships as an analyzer: build a consumer with a `partial` method that has no body. Without the analyzer, the build fails with CS8795.

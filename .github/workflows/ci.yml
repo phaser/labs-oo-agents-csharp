@@ -48,3 +48,11 @@ jobs:
 
       - name: Test
         run: dotnet test --solution Nooa.slnx --configuration Release --no-build --filter "Category!=Live"
+
+      - name: Pack
+        if: runner.os == 'Linux'
+        run: dotnet pack src/Nooa/Nooa.csproj --configuration Release --no-build --output artifacts/packages
+
+      - name: Package consumer (offline)
+        if: runner.os == 'Linux'
+        run: dotnet run --project examples/PackageConsumer --configuration Release

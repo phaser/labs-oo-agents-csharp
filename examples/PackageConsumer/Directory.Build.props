@@ -1,0 +1,3 @@
+<Project>
+  <!-- Stops the repo Directory.Build.props: this project must build like a user project, with no repo wiring. -->
+</Project>
