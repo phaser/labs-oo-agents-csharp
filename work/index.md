@@ -43,7 +43,7 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
 | [T15 Roslyn REPL engine](19-roslyn-repl.md) | [#19](https://github.com/phaser/labs-oo-agents-csharp/pull/19) | — | merged | 2026-10-17 |
-| [T16 Code validator for REPL cells](t16-code-validator.md) | — | — | todo | 2026-10-16 |
+| [T16 Code validator for REPL cells](20-code-validator.md) | [#20](https://github.com/phaser/labs-oo-agents-csharp/pull/20) | — | merged | 2026-10-17 |
 | [T17 CodeAct strategy and C# prompts](t17-codeact.md) | — | — | todo | 2026-10-16 |
 
 ## M5 — Context and tracing

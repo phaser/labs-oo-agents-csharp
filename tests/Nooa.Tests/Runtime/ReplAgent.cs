@@ -10,4 +10,10 @@ public partial class ReplAgent(AgentOptions? options = null) : Agent(options)
     public int Counter { get; set; }
 
     public string Greet(string name) => "hello " + name;
+
+    public async Task<int> SlowAsync()
+    {
+        await Task.Delay(1);
+        return 1;
+    }
 }
