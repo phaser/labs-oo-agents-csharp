@@ -128,3 +128,13 @@
 - Equal message lists in a test: `JsonMessage` holds a `JsonObject`, which compares by reference. Compare `ToJsonString()`.
 - xUnit `Assert.Contains` on a long string shows only the head of the text. Use `Assert.Fail(text)` once to see the whole text.
 - `dotnet format` sorts `using` directives: it fails for a `System.*` using after the others and for a `using` before the file-scoped `namespace` in a test file. Run `dotnet format Nooa.slnx` once, then `--verify-no-changes`.
+
+## Predict strategy (T14)
+
+- The real `ChatClientLlmClient` parses structured output inside `CallAsync` and throws `StructuredOutputException`, so a failed response never becomes an event. `FakeLlmClient.EnqueueText` sets no `Parsed`: a strategy must parse `Content` itself when `Parsed` is null. Use `StructuredOutputParser.Parse` (internal, `Nooa.Llm`).
+- A test through a generated agent needs `using Nooa.Strategies;` for `[Strategy(typeof(PredictStrategy))]`, even inside `Nooa.Tests.Strategies`. Set `AgentOptions.DefaultStrategy` for a method with no attribute.
+- Messages sent to the fake client: the system message holds `<system_prompt>` and `<self>`, then one user message per event (`<sys tag="N">Task { Prompt = @"..." }</sys>`, quotes doubled), a `CacheBoundary`, and a last user message with `<context>` (state and strategy blocks).
+- `ActorRuntime` adds `call_id` to the metadata of every recorded event. Assert single metadata keys, not the whole object.
+- A local function or lambda has a compiler-made method name. Use a named static method when a test checks `Delegate.Method.Name`.
+- `Agent` needs an LLM at construction, also in a test that only passes the agent to a helper: `new AgentOptions { Llm = new FakeLlmClient() }`.
+
