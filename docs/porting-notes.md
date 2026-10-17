@@ -399,8 +399,6 @@ Not applicable (Python only): `test_annotated_types`, `test_dataclass_properties
 - **Not ported:** E101/E102/E104 (dunder access, `__builtins__`, `setattr` of dunders), E001 for `set_restricted_imports`, E003 wildcard import (no C# analog), E005 `raise SystemExit` (the C# analog is `Environment.Exit`), E303 infinite loop (not in the checklist), E401/E402 class attribute assignment (C# types are not assignable), `strip_redundant_imports` (C# redundant `using` is harmless), `RestrictionsConfig` global override (`set_restricted_imports`), and `async_safety.py` runtime patches of `concurrent.futures` (Python only). The access to `ReplGlobals.__args`, `RoslynExecutionEngine`, `ReplOptions`, `ICellValidator` and `CellCodeValidator` is refused so that a cell cannot loosen its own guardrails (analog of `get/set_restricted_imports`).
 - **Tests:** `CellCodeValidatorTests` ports the intent of `test_code_validator.py` (security, blocking, REPL policy, shadow, integration), `test_blocking_call_validator.py` and `test_restricted_imports.py`. Python-only cases are skipped (`exec`/`eval`, dunders, `asyncio.run`, import rewriting, `RestrictionsConfig`).
 
-||||||| parent of 6a02a1c (Add tracing: ActivitySource spans, OpenInference attributes, scrubber, JSONL and OTLP exporters (T19))
-
 ## Tracing (`tracing/`, T19)
 
 **C#:** `Nooa.Tracing`. Spans come from `ActivitySource("Nooa")` (`NooaTracing.Source`). `NooaTracing.Enable(...)` installs `OpenInferenceHooks` and an `ActivityListener`. The listener scrubs each finished span and passes it to `ISpanExporter`s. `Shutdown` undoes it. A host that uses the OpenTelemetry SDK can skip this and call `AddSource("Nooa")`.

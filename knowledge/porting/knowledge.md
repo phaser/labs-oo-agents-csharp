@@ -192,8 +192,6 @@ About 260 KiB managed per cell, and the growth per 100 cells rises from 19 to 31
 - CS4014 is reported in a script for any unawaited task-returning call. `#pragma warning disable CS4014` hides it, so refuse that pragma.
 - `SymbolDisplayFormat(typeQualificationStyle: NameAndContainingTypesAndNamespaces)` writes `System.IO.File` and omits type arguments, which keys a deny table by original definition.
 
-||||||| parent of 6a02a1c (Add tracing: ActivitySource spans, OpenInference attributes, scrubber, JSONL and OTLP exporters (T19))
-
 ## Tracing with ActivitySource (T19)
 
 - **Parent by object, not by context:** `source.StartActivity(name, kind, ActivityContext)` makes a span whose `Parent` is null, so `Stop()` sets `Activity.Current` to null and later spans in the same flow become roots. To nest under a span that is not current, assign `Activity.Current = parent` first and call `StartActivity(name, kind)`. `Stop()` then restores the parent.
