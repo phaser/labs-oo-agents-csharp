@@ -42,7 +42,7 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
-| [T15 Roslyn REPL engine](t15-roslyn-repl.md) | — | — | todo | 2026-10-16 |
+| [T15 Roslyn REPL engine](t15-roslyn-repl.md) | — | — | open | 2026-10-17 |
 | [T16 Code validator for REPL cells](t16-code-validator.md) | — | — | todo | 2026-10-16 |
 | [T17 CodeAct strategy and C# prompts](t17-codeact.md) | — | — | todo | 2026-10-16 |
 

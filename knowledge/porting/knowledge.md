@@ -153,3 +153,31 @@
 - A local function or lambda has a compiler-made method name. Use a named static method when a test checks `Delegate.Method.Name`.
 - `Agent` needs an LLM at construction, also in a test that only passes the agent to a helper: `new AgentOptions { Llm = new FakeLlmClient() }`.
 
+
+## Roslyn scripting REPL (T15)
+
+- `ScriptOptions.Default` has only a minimal reference set (no `System.Linq`). `WithReferences` replaces the set. Resolve framework assemblies from `RuntimeEnvironment.GetRuntimeDirectory()`.
+- `WithFilePath("Cell In[N]")` plus `WithEmitDebugInformation(true)` gives `StackFrame.GetFileName()` and `GetFileLineNumber()` for cell frames, also for the in-memory assembly. Compile diagnostics carry the same path in `GetLineSpan().Path`.
+- `state.ContinueWithAsync(code, options, catchException: _ => true)`: a runtime exception returns a state with `Exception` set and keeps the variables assigned before the throw. A compile error throws `CompilationErrorException` and leaves the old state valid. `ScriptOptions` imports apply per submission: pass them on every `ContinueWithAsync`.
+- A member of the globals object (`Console`) wins over a type from an import. A missing assembly is reported as CS1069 ("type has been forwarded to assembly System.Console ... consider adding a reference"), CS0234 for others.
+- The `System.Runtime` facade forwards to `System.Private.CoreLib`, so the core types (`System.IO.File`, `Environment`, reflection) compile with only the facade referenced. Hiding them needs a validator, not a reference list.
+- Synchronous cell code runs on the calling thread until the first await. Wrap the run in `Task.Run` so a tight loop does not block the caller, and give up after a grace period.
+- A stack frame for the top-level code is `Submission#N+<<Initialize>>d__0.MoveNext`. Local functions are `<<Initialize>>g__Name|0_0`.
+- `typeof(Outer<int>.Inner<bool>).DeclaringType` is the open definition `Outer<T>`. Take the outer type arguments from the constructed type, or a type-name writer recurses forever.
+- `Assert.SkipUnless(condition, reason)` skips at run time. Use it to keep a benchmark out of CI.
+- `TruncatingTextWriter.ToString()` wraps cut text in `<truncated-output>` lines.
+
+## Memory growth of the REPL (T15 measurement, 2026-10-17)
+
+500 trivial cells (`var vN = N; vN + warm`), Release, macOS arm64, .NET 10, forced GC before each sample (test `RoslynExecutionEngineMemoryTests`, run with `NOOA_BENCHMARK=1`):
+
+| Cells | Managed (MiB) | Working set (MiB) | Elapsed (s) |
+|-------|---------------|-------------------|-------------|
+| start | 23.7 | 230.9 | 0 |
+| 100 | 42.5 | 254.5 | 0.5 |
+| 200 | 63.2 | 269.7 | 1.0 |
+| 300 | 90.9 | 290.2 | 1.5 |
+| 400 | 119.4 | 311.0 | 2.0 |
+| 500 | 150.2 | 332.0 | 2.5 |
+
+About 260 KiB managed per cell, and the growth per 100 cells rises from 19 to 31 MiB (each submission compilation references all earlier ones). Time is about 5 ms per cell. Script assemblies are not unloaded, so this is real retention. For a session of a few hundred cells it is acceptable. A long session needs a cell cap or a worker process (B01). Hypothesis in `hypotheses.md`: the growth is more than linear.
