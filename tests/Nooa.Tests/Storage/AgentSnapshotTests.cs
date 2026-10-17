@@ -295,6 +295,22 @@ public class AgentSnapshotTests
     }
 
     [Fact]
+    public void DisabledContext_FileCannotDisableProtectedBlocks()
+    {
+        var logger = new CapturingLogger();
+        var target = NewAgent(logger: logger);
+        var json = Mutate(Json(NewAgent()), n => n["disabled_context"] = new JsonArray("system_prompt", "self", "state", "notes")).ToJsonString();
+
+        SnapshotJson.FromJson(json, target);
+
+        Assert.True(target.ContextManager.IsEnabled("system_prompt"));
+        Assert.True(target.ContextManager.IsEnabled("self"));
+        Assert.True(target.ContextManager.IsEnabled("state"));
+        Assert.True(target.ContextManager.IsDisabled("notes"));
+        Assert.Contains("disabled key system_prompt", logger.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ContextBlocks_NonJsonValue_ThrowsSerialization()
     {
         var agent = NewAgent();

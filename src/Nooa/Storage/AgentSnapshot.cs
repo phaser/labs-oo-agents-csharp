@@ -194,7 +194,19 @@ public sealed record AgentSnapshot
             }
         }
 
-        agent.ContextManager.Disable([.. DisabledContext]);
+        var disabled = new List<string>();
+        foreach (var key in DisabledContext)
+        {
+            if (agent.ContextManager.IsProtected(key))
+            {
+                agent.Logger.LogWarning("Snapshot: ignoring the disabled key {Key}, which names a protected context block", key);
+                continue;
+            }
+
+            disabled.Add(key);
+        }
+
+        agent.ContextManager.Disable([.. disabled]);
         foreach (var (member, value) in values)
         {
             member.Field.SetValue(agent, value);
