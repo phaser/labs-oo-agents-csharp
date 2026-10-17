@@ -254,7 +254,7 @@ public class AgentSnapshotTests
         var source = NewAgent();
         source.ContextManager.SetStatic("rules", "be nice");
         source.ContextManager.Set("notes", new Dictionary<string, object?> { ["n"] = 1, ["list"] = new List<object?> { "a", 2.5, true, null } });
-        source.ContextManager.Disable("self");
+        source.ContextManager.Disable("hidden");
         var target = NewAgent();
 
         SnapshotJson.FromJson(Json(source), target);
@@ -265,7 +265,7 @@ public class AgentSnapshotTests
         var notes = Assert.IsType<Dictionary<string, object?>>(target.ContextManager.Get("notes"));
         Assert.Equal(1L, notes["n"]);
         Assert.Equal(["a", 2.5, true, null], Assert.IsType<List<object?>>(notes["list"]));
-        Assert.True(target.ContextManager.IsDisabled("self"));
+        Assert.True(target.ContextManager.IsDisabled("hidden"));
     }
 
     [Fact]
