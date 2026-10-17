@@ -8,7 +8,7 @@
   <!-- NuGet package. The version is the single place that sets the package version. -->
   <PropertyGroup>
     <PackageId>Nooa</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>Cristian Bidea</Authors>
     <Description>NOOA for C#: an agent is a class. Fields are state, methods are capabilities, doc comments are prompts. A partial method marked [Agentic] is run by a model loop. The source generator ships inside this package.</Description>
     <PackageTags>agents;llm;ai;source-generator</PackageTags>
