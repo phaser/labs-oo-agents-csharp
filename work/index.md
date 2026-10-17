@@ -35,8 +35,8 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 |------|----|------|--------|---------|
 | [T11 Source generator for agents](12-source-generator.md) | [#12](https://github.com/phaser/labs-oo-agents-csharp/pull/12) | — | merged | 2026-10-16 |
 | [T12 Agent base, ActorRuntime, method wrapper](14-agent-runtime.md) | [#14](https://github.com/phaser/labs-oo-agents-csharp/pull/14) | — | merged | 2026-10-16 |
-| [T13 Context blocks renderer](16-context-renderer.md) | [#16](https://github.com/phaser/labs-oo-agents-csharp/pull/16) | — | open | 2026-10-17 |
-| [T14 Template and Predict strategies](t14-template-predict.md) | — | — | todo | 2026-10-16 |
+| [T13 Context blocks renderer](16-context-renderer.md) | [#16](https://github.com/phaser/labs-oo-agents-csharp/pull/16) | — | merged | 2026-10-17 |
+| [T14 Template and Predict strategies](17-template-predict.md) | [#17](https://github.com/phaser/labs-oo-agents-csharp/pull/17) | — | merged | 2026-10-17 |
 
 ## M4 — CodeAct
 
@@ -57,8 +57,8 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
-| [T20 ShellTools](18-shell-tools.md) | [#18](https://github.com/phaser/labs-oo-agents-csharp/pull/18) | — | open | 2026-10-17 |
-| [T21 TodoManager](15-todo-manager.md) | — | — | open | 2026-10-17 |
+| [T20 ShellTools](18-shell-tools.md) | [#18](https://github.com/phaser/labs-oo-agents-csharp/pull/18) | — | merged | 2026-10-17 |
+| [T21 TodoManager](15-todo-manager.md) | [#15](https://github.com/phaser/labs-oo-agents-csharp/pull/15) | — | merged | 2026-10-17 |
 
 ## M7 — Acceptance
 

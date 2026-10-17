@@ -13,13 +13,14 @@ public class StructuredOutputExceptionTests
     {
         var inner = new InvalidOperationException("bad");
 
-        var error = new StructuredOutputException(typeof(int), "a value does not match", "oops", "$.x", inner);
+        var error = new StructuredOutputException(typeof(int), "a value does not match", "oops", "$.x", inner, isMalformedJson: true);
 
         Assert.Equal("The output is not valid Int32: a value does not match", error.Message);
         Assert.Equal(typeof(int), error.OutputType);
         Assert.Equal("a value does not match", error.Detail);
         Assert.Equal("$.x", error.Path);
         Assert.Equal("oops", error.Content);
+        Assert.True(error.IsMalformedJson);
         Assert.Same(inner, error.InnerException);
         Assert.IsAssignableFrom<ValidationException>(error);
     }

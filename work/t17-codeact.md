@@ -28,7 +28,7 @@ Upstream (pin in the plan):
 
 - [ ] Port the generation loop: generate → tool calls → run cell or return result; `max_iterations`, `max_retries`
 - [ ] Port `_handle_return_result` coercion: variable name, JSON string; skip the AST constructor evaluator
-- [ ] Port pre- and postconditions (`strategy_validation.py`)
+- [ ] Run pre- and postconditions in CodeAct and add the `CodeActConfig` fields (the types `MethodPrecondition`, `MethodPostcondition`, `InvariantException`, `StrategyConditions` are ported in T14)
 - [ ] Port `LoopGuard`
 - [ ] Port `InspectInputsPrefill`
 - [ ] Rewrite every strategy instruction and error hint for C#

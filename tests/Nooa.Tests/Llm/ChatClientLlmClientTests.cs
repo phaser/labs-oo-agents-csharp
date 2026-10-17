@@ -423,6 +423,18 @@ public class ChatClientLlmClientTests
         Assert.DoesNotContain("\"x\"", error.Message);
     }
 
+    [Theory]
+    [InlineData("not json at all", true)]
+    [InlineData("{\"label\": \"ok\", \"score\": \"x\"}", false)]
+    public async Task CallAsync_StructuredOutputInvalid_FlagsMalformedJsonOnly(string text, bool malformed)
+    {
+        var chat = new ScriptedChatClient().Reply(text);
+
+        var error = await Assert.ThrowsAsync<StructuredOutputException>(() => Call(Client(chat), outputType: typeof(Sentiment)));
+
+        Assert.Equal(malformed, error.IsMalformedJson);
+    }
+
     [Fact]
     public async Task CallAsync_StructuredOutputTypeMismatch_ReportsThePathNotTheValue()
     {

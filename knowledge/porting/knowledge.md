@@ -143,3 +143,13 @@
 - `File.GetUnixFileMode` in a test needs an `if (!OperatingSystem.IsWindows())` block around the call (CA1416); `Assert.False(IsWindows)` is not a guard.
 - `docker run mcr.microsoft.com/dotnet/sdk:10.0` runs the Linux tests locally: copy the tree without `bin`/`obj`, `apt-get install ripgrep`. `rm /usr/bin/setsid` tests the perl path.
 - Spawning `ps` to find child processes timed out under a busy parallel test run (macOS) and broke timeout recovery. `libproc` `proc_listchildpids` (DllImport, `int[]` buffer, returns the count) needs no process and no timeout.
+
+## Predict strategy (T14)
+
+- The real `ChatClientLlmClient` parses structured output inside `CallAsync` and throws `StructuredOutputException`, so a failed response never becomes an event. `FakeLlmClient.EnqueueText` sets no `Parsed`: a strategy must parse `Content` itself when `Parsed` is null. Use `StructuredOutputParser.Parse` (internal, `Nooa.Llm`).
+- A test through a generated agent needs `using Nooa.Strategies;` for `[Strategy(typeof(PredictStrategy))]`, even inside `Nooa.Tests.Strategies`. Set `AgentOptions.DefaultStrategy` for a method with no attribute.
+- Messages sent to the fake client: the system message holds `<system_prompt>` and `<self>`, then one user message per event (`<sys tag="N">Task { Prompt = @"..." }</sys>`, quotes doubled), a `CacheBoundary`, and a last user message with `<context>` (state and strategy blocks).
+- `ActorRuntime` adds `call_id` to the metadata of every recorded event. Assert single metadata keys, not the whole object.
+- A local function or lambda has a compiler-made method name. Use a named static method when a test checks `Delegate.Method.Name`.
+- `Agent` needs an LLM at construction, also in a test that only passes the agent to a helper: `new AgentOptions { Llm = new FakeLlmClient() }`.
+

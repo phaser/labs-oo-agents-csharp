@@ -8,7 +8,6 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
-using Nooa.Json;
 
 namespace Nooa.Llm;
 
@@ -23,7 +22,6 @@ namespace Nooa.Llm;
 /// </remarks>
 public sealed partial class ChatClientLlmClient : ILlmClient
 {
-    private const string _wrapperProperty = "result";
     private const int _maxSchemaNameLength = 64;
     private const string _strictKey = "strict";
 
@@ -92,7 +90,7 @@ public sealed partial class ChatClientLlmClient : ILlmClient
             LogCompleted(_logger, response.FinishReason, response.Parts.Count, response.Usage?.TotalTokens ?? 0);
         }
 
-        return outputType is null || response.ToolCalls.Count > 0 ? response : response with { Parsed = Parse(response, outputType, wrapped) };
+        return outputType is null || response.ToolCalls.Count > 0 ? response : response with { Parsed = StructuredOutputParser.Parse(response, outputType, wrapped) };
     }
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "LLM call finished: {FinishReason}, {PartCount} parts, {TotalTokens} tokens")]
@@ -214,17 +212,17 @@ public sealed partial class ChatClientLlmClient : ILlmClient
     private static bool ApplyOutputFormat(ChatOptions chatOptions, Type outputType)
     {
         var raw = ToolSchema.FromType(outputType);
-        var wrap = raw["type"] is not JsonValue v || !v.TryGetValue<string>(out var rootType) || rootType != "object";
+        var wrap = StructuredOutputParser.RequiresWrapper(raw);
         var root = raw;
         if (wrap)
         {
             root = new JsonObject
             {
                 ["type"] = "object",
-                ["properties"] = new JsonObject { [_wrapperProperty] = raw.DeepClone() },
-                ["required"] = new JsonArray(_wrapperProperty),
+                ["properties"] = new JsonObject { [StructuredOutputParser.WrapperProperty] = raw.DeepClone() },
+                ["required"] = new JsonArray(StructuredOutputParser.WrapperProperty),
             };
-            if (root["properties"]![_wrapperProperty]!.AsObject().Remove("$defs", out var defs))
+            if (root["properties"]![StructuredOutputParser.WrapperProperty]!.AsObject().Remove("$defs", out var defs))
             {
                 root["$defs"] = defs;
             }
@@ -237,48 +235,6 @@ public sealed partial class ChatClientLlmClient : ILlmClient
         chatOptions.AdditionalProperties = new AdditionalPropertiesDictionary { [_strictKey] = strict };
         return wrap;
     }
-
-    private static object Parse(LlmResponse response, Type outputType, bool wrapped)
-    {
-        // As upstream, reasoning stands in when a reasoning model puts the answer there.
-        var text = response.Content.Length > 0 ? response.Content : response.Reasoning ?? "";
-        JsonNode? node;
-        try
-        {
-            node = LlmJson.ExtractAndParse(text);
-        }
-        catch (JsonException e)
-        {
-            // The messages of LlmJson hold no model text, so Detail may repeat them.
-            throw new StructuredOutputException(outputType, e.Message, text, Location(e), e);
-        }
-
-        if (wrapped)
-        {
-            node = node is JsonObject obj && obj.TryGetPropertyValue(_wrapperProperty, out var inner)
-                ? inner
-                : throw new StructuredOutputException(
-                    outputType, $"the JSON object has no \"{_wrapperProperty}\" property", text, "$");
-        }
-
-        try
-        {
-            return node.Deserialize(outputType, NooaJson.Options)
-                ?? throw new StructuredOutputException(outputType, "the JSON value is null", text, "$");
-        }
-        catch (JsonException e)
-        {
-            // The message of System.Text.Json names the expected type and the path, not the value.
-            throw new StructuredOutputException(
-                outputType, $"a value does not match the type at {e.Path ?? "$"}", text, e.Path, e);
-        }
-        catch (NotSupportedException e)
-        {
-            throw new StructuredOutputException(outputType, "the type cannot be read from JSON", text, null, e);
-        }
-    }
-
-    private static string? Location(JsonException e) => e.InnerException is JsonException inner ? inner.Path : e.Path;
 
     private sealed class ToolDeclaration : AIFunctionDeclaration
     {

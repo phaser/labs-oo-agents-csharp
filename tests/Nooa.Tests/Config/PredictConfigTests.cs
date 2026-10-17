@@ -4,6 +4,7 @@
 // Ported from: tests/config/test_strategy_configs.py
 
 using Nooa.Config;
+using Nooa.Errors;
 
 namespace Nooa.Tests.Config;
 
@@ -54,5 +55,41 @@ public class PredictConfigTests
         var ex = Assert.Throws<ArgumentException>(() => new PredictConfig().MergeWith(new PredictConfig()));
 
         Assert.Contains("MergeWith() received a config with no fields set", ex.Message);
+    }
+
+    [Fact]
+    public void Defaults_Conditions_AreEmpty()
+    {
+        var c = new PredictConfig();
+
+        Assert.Empty(c.Preconditions);
+        Assert.Empty(c.Postconditions);
+    }
+
+    [Fact]
+    public void MergeWith_Conditions_Override()
+    {
+        static void Check(Nooa.Agent agent, object? result, Nooa.Strategies.CurrentCall call)
+        {
+        }
+
+        var merged = new PredictConfig().MergeWith(new PredictConfig { Postconditions = [Check] });
+
+        Assert.Single(merged.Postconditions);
+        Assert.Empty(merged.Preconditions);
+    }
+
+    [Fact]
+    public void Validate_NullCondition_Throws()
+    {
+        var error = Assert.Throws<ConfigValidationException>(() => new PredictConfig { Postconditions = [null!] }.Validate());
+
+        Assert.Contains("Postconditions", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Validate_Defaults_Passes()
+    {
+        new PredictConfig().Validate();
     }
 }

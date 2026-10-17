@@ -18,13 +18,16 @@ public sealed class StructuredOutputException : ValidationException
     /// <param name="content">The text that failed to parse. Do not log it.</param>
     /// <param name="path">The JSON path of the problem, such as <c>$.score</c>, or null when unknown.</param>
     /// <param name="innerException">The parse or conversion error.</param>
-    public StructuredOutputException(Type outputType, string detail, string content, string? path = null, Exception? innerException = null)
+    /// <param name="isMalformedJson">True when the text is not JSON at all, as opposed to JSON of the wrong shape.</param>
+    public StructuredOutputException(
+        Type outputType, string detail, string content, string? path = null, Exception? innerException = null, bool isMalformedJson = false)
         : base($"The output is not valid {outputType.Name}: {detail}", innerException!)
     {
         OutputType = outputType;
         Detail = detail;
         Content = content;
         Path = path;
+        IsMalformedJson = isMalformedJson;
     }
 
     /// <summary>The type that was requested.</summary>
@@ -38,4 +41,7 @@ public sealed class StructuredOutputException : ValidationException
 
     /// <summary>The text that failed to parse. Do not log it.</summary>
     public string Content { get; }
+
+    /// <summary>True when the text is not JSON at all, as opposed to JSON of the wrong shape.</summary>
+    public bool IsMalformedJson { get; }
 }
