@@ -1,9 +1,9 @@
 ---
-pr:
-pr_url:
+pr: 28
+pr_url: https://github.com/phaser/labs-oo-agents-csharp/pull/28
 jira:
 epic: M7
-status: todo
+status: merged
 created: 2026-10-17
 updated: 2026-10-17
 tags: [acceptance, live]
