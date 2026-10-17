@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-FileCopyrightText: Copyright (c) 2026 Cristian Bidea
 // SPDX-License-Identifier: Apache-2.0
-// Ported from: src/nooa/util/quickstart.py
+// Ported from: examples/quickstart (a copy of the example type for the unit tests; the example has its own in examples/Quickstart)
 
 namespace Nooa.Tests.Strategies.Acceptance;
 

@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Ported from: examples/quickstart/03_codeact_tools.py
 
-namespace Nooa.Tests.Strategies.Acceptance;
+namespace Nooa.Examples.Quickstart.Example03;
 
 /// <summary>You are an agent that checks inventory using deterministic helper methods.</summary>
 public partial class InventoryAgent(AgentOptions? options = null) : Agent(options)

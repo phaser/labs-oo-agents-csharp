@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Ported from: examples/quickstart/07_dynamic_prompts.py
 
-namespace Nooa.Tests.Strategies.Acceptance;
+namespace Nooa.Examples.Quickstart.Example07;
 
 /// <summary>Agent that translates text with configurable behavior.</summary>
 public partial class TranslatorAgent(string targetLanguage = "Spanish", AgentOptions? options = null) : Agent(options)

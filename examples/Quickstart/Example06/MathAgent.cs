@@ -1,8 +1,9 @@
+// SPDX-FileCopyrightText: Copyright (c) 2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 // SPDX-FileCopyrightText: Copyright (c) 2026 Cristian Bidea
 // SPDX-License-Identifier: Apache-2.0
+// Ported from: examples/quickstart/06_tracing.py
 
-
-namespace Nooa.Tests.Tracing;
+namespace Nooa.Examples.Quickstart.Example06;
 
 /// <summary>You are a careful math assistant.</summary>
 public partial class MathAgent(AgentOptions? options = null) : Agent(options)

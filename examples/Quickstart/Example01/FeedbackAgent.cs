@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Ported from: examples/quickstart/01_first_generation_method.py
 
-namespace Nooa.Tests.Strategies.Acceptance;
+namespace Nooa.Examples.Quickstart.Example01;
 
 /// <summary>You are an agent specializing in analyzing customer feedback.</summary>
 public partial class FeedbackAgent(AgentOptions? options = null) : Agent(options)

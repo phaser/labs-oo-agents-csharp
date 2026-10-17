@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Using Include="Nooa" />
+    <Using Include="Nooa.Llm" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../../src/Nooa/Nooa.csproj" />
     <ProjectReference Include="../../src/Nooa.Generators/Nooa.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
