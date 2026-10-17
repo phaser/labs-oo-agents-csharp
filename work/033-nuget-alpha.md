@@ -29,7 +29,8 @@ Depends on: T23, T23b.
 - [x] `examples/PackageConsumer` takes the version that the pack produced (no second fixed version)
 - [x] Add `.github/workflows/publish.yml` on `v*` tags, with actions pinned by SHA and `permissions: contents: read`
 - [x] Document the release steps (tag, push, check on nuget.org) in the README or `docs/`
-- [ ] User adds the `NUGET_API_KEY` secret to this repository
+- [x] Use nuget.org Trusted Publishing in place of a stored `NUGET_API_KEY` (`NuGet/login` v1.2.0)
+- [ ] User adds the Trusted Publishing policy on nuget.org and the `NUGET_USER` repository variable
 - [ ] User approves the first tag (`v0.1.0-alpha.1`); push it and check the package on nuget.org
 
 ## Notes

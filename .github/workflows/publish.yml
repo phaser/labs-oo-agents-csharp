@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  id-token: write # nuget.org Trusted Publishing: the OIDC token gets a short-lived API key
 
 jobs:
   publish:
@@ -38,9 +39,15 @@ jobs:
       - name: Pack
         run: dotnet pack src/Nooa/Nooa.csproj --configuration Release --no-build --output artifacts/packages
 
+      - name: Log in to nuget.org
+        id: nuget-login
+        uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+        with:
+          user: ${{ vars.NUGET_USER }}
+
       - name: Push to nuget.org
         env:
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
         run: dotnet nuget push "artifacts/packages/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -98,7 +98,7 @@ The version comes from the git tag (MinVer). A commit before any tag gets `0.1.0
 1. Make sure `main` is green.
 2. Create a tag: `git tag v0.1.0-alpha.N`.
 3. Push the tag: `git push origin v0.1.0-alpha.N`.
-4. The `publish` workflow tests, packs and pushes to nuget.org. It needs the `NUGET_API_KEY` secret.
+4. The `publish` workflow tests, packs and pushes to nuget.org. It uses nuget.org Trusted Publishing: a policy for `phaser/labs-oo-agents-csharp` and `publish.yml` on nuget.org, and the repository variable `NUGET_USER` (the nuget.org user name). No API key is stored.
 5. Check the package on nuget.org.
 
 A published version cannot be deleted. You can only unlist it. Do not reuse a tag.
