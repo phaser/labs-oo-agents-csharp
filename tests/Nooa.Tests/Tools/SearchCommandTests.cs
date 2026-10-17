@@ -52,9 +52,10 @@ public class SearchCommandTests
         var hostile = "find " + new string(' ', 50_000) + "x |";
 
         var watch = System.Diagnostics.Stopwatch.StartNew();
-        _ = SearchCommand.IsPure(hostile);
+        var pure = SearchCommand.IsPure(hostile);
 
-        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(10));
+        Assert.False(pure);
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(2));
     }
 
     [Fact]

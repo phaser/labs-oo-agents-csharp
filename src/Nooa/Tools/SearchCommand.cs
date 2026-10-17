@@ -38,6 +38,19 @@ public static partial class SearchCommand
     /// <remarks>Also accepts <c>find ... | xargs grep -n ...</c>, a trailing <c>| head</c> or <c>| tail</c>, and a leading <c>cd ... &amp;&amp;</c>.</remarks>
     public static bool IsPure(string command)
     {
+        // The command is model-written. A regex timeout means "not pure": fail closed, never throw.
+        try
+        {
+            return IsPureCore(command);
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            return false;
+        }
+    }
+
+    private static bool IsPureCore(string command)
+    {
         var c = command.Trim();
         if (c.Contains("&&", StringComparison.Ordinal))
         {
@@ -188,19 +201,19 @@ public static partial class SearchCommand
         return false;
     }
 
-    [GeneratedRegex(@"\|\s*(sed|awk|cut|sort|uniq|tr|head|tail|wc|xargs|rev)\b", RegexOptions.None, _regexTimeoutMs)]
+    [GeneratedRegex(@"\|\s*(sed|awk|cut|sort|uniq|tr|head|tail|wc|xargs|rev)\b", RegexOptions.NonBacktracking, _regexTimeoutMs)]
     private static partial Regex ManglingPipe();
 
-    [GeneratedRegex(@"^\s*(grep|egrep|rg)\b", RegexOptions.None, _regexTimeoutMs)]
+    [GeneratedRegex(@"^\s*(grep|egrep|rg)\b", RegexOptions.NonBacktracking, _regexTimeoutMs)]
     private static partial Regex SearchHead();
 
-    [GeneratedRegex(@"\|\s*(head|tail)(\s+-[0-9n]+)?\s*$", RegexOptions.None, _regexTimeoutMs)]
+    [GeneratedRegex(@"\|\s*(head|tail)(\s+-[0-9n]+)?\s*$", RegexOptions.NonBacktracking, _regexTimeoutMs)]
     private static partial Regex SafeTailPipe();
 
-    [GeneratedRegex(@"find\s+.+\|\s*xargs\s+grep", RegexOptions.None, _regexTimeoutMs)]
+    [GeneratedRegex(@"find\s+.+\|\s*xargs\s+grep", RegexOptions.NonBacktracking, _regexTimeoutMs)]
     private static partial Regex XargsGrep();
 
-    [GeneratedRegex(@"(?:^|\s)-([A-Za-z]+)", RegexOptions.None, _regexTimeoutMs)]
+    [GeneratedRegex(@"(?:^|\s)-([A-Za-z]+)", RegexOptions.NonBacktracking, _regexTimeoutMs)]
     private static partial Regex ShortFlagCluster();
 
     /// <summary>The parts of a search command that the anchor harvest needs.</summary>
