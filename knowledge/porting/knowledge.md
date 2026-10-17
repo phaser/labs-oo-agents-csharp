@@ -102,3 +102,10 @@
 - Snapshot of untrusted JSON: never let the file choose a type. Resolve the target member from the live object, take the type from its declaration, check an eligibility policy and an allowlist, read all values first and write after. STJ ignores unknown properties such as `$type`, but a `[JsonPolymorphic]` base with an unknown discriminator throws `NotSupportedException`.
 - `FieldInfo.SetValue` works on `readonly` instance fields and on auto-property backing fields (`<Name>k__BackingField`).
 - A generated partial agent class needs `partial` also for a primary-constructor subclass in tests. Test fixtures with only reflection access need `#pragma warning disable CS0649`.
+
+## Model registry (T10)
+
+- YamlDotNet with `WithAttemptingUnquotedStringTypeDeserialization` returns the smallest fitting integral type (`Int16`, `Int32`, ...), and `double` for decimals. Convert numbers by value (`Convert.ToInt64` after an integral check), never with `is int`.
+- Trust for a layered config file lives in `LayerTrust.IsTrusted(path, fileName, envVar)`. Use it for every new layered file kind. A project-layer file must not replace a trusted entry, and must not combine a key variable with a custom host.
+- `ChatOptions.Reasoning = new ReasoningOptions { Effort = ReasoningEffort.High }` reaches the OpenAI wire as `reasoning_effort`. A test checks the body.
+- A test that needs a trusted layer writes to the user dir. The project dir is untrusted.

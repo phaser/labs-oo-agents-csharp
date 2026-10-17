@@ -70,6 +70,9 @@ public sealed partial class ChatClientLlmClient : ILlmClient
         {
             ModelId = _options.Model,
             MaxOutputTokens = _options.MaxOutputTokens,
+            Temperature = _options.Temperature,
+            TopP = _options.TopP,
+            Reasoning = _options.ReasoningEffort is { } effort ? new ReasoningOptions { Effort = effort } : null,
         };
 
         if (tools is { Count: > 0 })

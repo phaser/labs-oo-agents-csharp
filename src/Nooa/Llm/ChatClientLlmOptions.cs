@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Copyright (c) 2026 Cristian Bidea
 // SPDX-License-Identifier: Apache-2.0
 
+using Microsoft.Extensions.AI;
+
 namespace Nooa.Llm;
 
 /// <summary>Settings of <see cref="ChatClientLlmClient"/>. The API key belongs to the wrapped chat client, never here.</summary>
@@ -19,6 +21,15 @@ public sealed record ChatClientLlmOptions
     /// The token budget for the reply of one call. It limits cost and runaway output. Null sends no limit.
     /// </summary>
     public int? MaxOutputTokens { get; init; } = DefaultMaxOutputTokens;
+
+    /// <summary>The sampling temperature. Null leaves the choice to the server.</summary>
+    public float? Temperature { get; init; }
+
+    /// <summary>The nucleus sampling probability. Null leaves the choice to the server.</summary>
+    public float? TopP { get; init; }
+
+    /// <summary>The reasoning effort to request. Null sends no reasoning setting.</summary>
+    public ReasoningEffort? ReasoningEffort { get; init; }
 
     /// <summary>The model context window in tokens, or null when it is unknown.</summary>
     public int? ContextWindow { get; init; }

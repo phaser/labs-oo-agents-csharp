@@ -27,14 +27,14 @@ One row per tracked PR / in-progress item, grouped by epic (milestone; no Jira e
 |------|----|------|--------|---------|
 | [T08 ILlmClient and FakeLlmClient](7-llm-client-fake.md) | [#7](https://github.com/phaser/labs-oo-agents-csharp/pull/7) | — | merged | 2026-10-16 |
 | [T09 IChatClient adapter, tools, structured output, retry](11-chatclient-adapter.md) | [#11](https://github.com/phaser/labs-oo-agents-csharp/pull/11) | — | merged | 2026-10-16 |
-| [T10 Model registry and reasoning levels](t10-model-registry.md) | — | — | todo | 2026-10-16 |
+| [T10 Model registry and reasoning levels](13-model-registry.md) | [#13](https://github.com/phaser/labs-oo-agents-csharp/pull/13) | — | merged | 2026-10-16 |
 
 ## M3 — Agent model
 
 | Item | PR | Jira | Status | Updated |
 |------|----|------|--------|---------|
 | [T11 Source generator for agents](12-source-generator.md) | [#12](https://github.com/phaser/labs-oo-agents-csharp/pull/12) | — | merged | 2026-10-16 |
-| [T12 Agent base, ActorRuntime, method wrapper](14-agent-runtime.md) | [#14](https://github.com/phaser/labs-oo-agents-csharp/pull/14) | — | open | 2026-10-16 |
+| [T12 Agent base, ActorRuntime, method wrapper](14-agent-runtime.md) | [#14](https://github.com/phaser/labs-oo-agents-csharp/pull/14) | — | merged | 2026-10-16 |
 | [T13 Context blocks renderer](t13-context-renderer.md) | — | — | todo | 2026-10-16 |
 | [T14 Template and Predict strategies](t14-template-predict.md) | — | — | todo | 2026-10-16 |
 
