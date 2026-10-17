@@ -129,6 +129,21 @@
 - xUnit `Assert.Contains` on a long string shows only the head of the text. Use `Assert.Fail(text)` once to see the whole text.
 - `dotnet format` sorts `using` directives: it fails for a `System.*` using after the others and for a `using` before the file-scoped `namespace` in a test file. Run `dotnet format Nooa.slnx` once, then `--verify-no-changes`.
 
+## Shell and child processes (T20)
+
+- `Process` cannot set a new session or pass an extra fd. Start bash under `setsid` (Linux) or `perl -MPOSIX -e 'setsid(); exec @ARGV'` (macOS has no `setsid`). The shell PID is then the process group id, and `kill(-pid, sig)` ends the group.
+- .NET has no public API for SIGTERM or SIGINT. Use `[DllImport("libc")] kill`. `LibraryImport` fails the build unless the whole project sets `AllowUnsafeBlocks`.
+- `ProcessStartInfo.Environment.Clear()` then add only the allowlist. `Process.Start` resolves `FileName` through the parent PATH, not the child PATH.
+- Bash `${var//%/x}` is ambiguous: write `${var//\%/x}`. `$_` holds the last argument of the previous command, so a sentinel passed as last argument is visible to the next command.
+- `jobs -p` inside `$( )` lists the parent's jobs in bash. Put the whole frame in one `printf`: one `write(2)` below PIPE_BUF stays atomic against background-job output.
+- A Linux zombie still answers `kill(pid, 0)`. Test liveness with `/proc/<pid>/stat` state `Z`.
+- `process.WaitForExitAsync` does not wait for stream EOF when the code reads `StandardOutput` itself, so a background job that holds the pipe does not block it.
+- Class `Path` property shadows `System.IO.Path` inside the class. Write `System.IO.Path.X` there.
+- Test method with `Task.Run` or `Task.Delay` needs `TestContext.Current.CancellationToken` (xUnit1051), also in a lambda.
+- `File.GetUnixFileMode` in a test needs an `if (!OperatingSystem.IsWindows())` block around the call (CA1416); `Assert.False(IsWindows)` is not a guard.
+- `docker run mcr.microsoft.com/dotnet/sdk:10.0` runs the Linux tests locally: copy the tree without `bin`/`obj`, `apt-get install ripgrep`. `rm /usr/bin/setsid` tests the perl path.
+- Spawning `ps` to find child processes timed out under a busy parallel test run (macOS) and broke timeout recovery. `libproc` `proc_listchildpids` (DllImport, `int[]` buffer, returns the count) needs no process and no timeout.
+
 ## Predict strategy (T14)
 
 - The real `ChatClientLlmClient` parses structured output inside `CallAsync` and throws `StructuredOutputException`, so a failed response never becomes an event. `FakeLlmClient.EnqueueText` sets no `Parsed`: a strategy must parse `Content` itself when `Parsed` is null. Use `StructuredOutputParser.Parse` (internal, `Nooa.Llm`).
