@@ -1,9 +1,9 @@
 ---
-pr:
-pr_url:
+pr: 22
+pr_url: https://github.com/phaser/labs-oo-agents-csharp/pull/22
 jira:
 epic: M5
-status: open
+status: merged
 created: 2026-10-17
 updated: 2026-10-17
 tags: [security]
