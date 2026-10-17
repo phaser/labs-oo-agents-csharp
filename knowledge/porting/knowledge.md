@@ -192,3 +192,11 @@ About 260 KiB managed per cell, and the growth per 100 cells rises from 19 to 31
 - CS4014 is reported in a script for any unawaited task-returning call. `#pragma warning disable CS4014` hides it, so refuse that pragma.
 - `SymbolDisplayFormat(typeQualificationStyle: NameAndContainingTypesAndNamespaces)` writes `System.IO.File` and omits type arguments, which keys a deny table by original definition.
 
+## Tracing with ActivitySource (T19)
+
+- **Parent by object, not by context:** `source.StartActivity(name, kind, ActivityContext)` makes a span whose `Parent` is null, so `Stop()` sets `Activity.Current` to null and later spans in the same flow become roots. To nest under a span that is not current, assign `Activity.Current = parent` first and call `StartActivity(name, kind)`. `Stop()` then restores the parent.
+- **Hook pairs:** a `Before` hook that starts a span and an `After` hook that stops it work with `Activity.Current` only when both run in the same async flow. The runtime does this (try/finally in one async method).
+- **`Channel` `DropWrite`:** `TryWrite` returns true even when the item is dropped. Use `FullMode.Wait` when the caller must know that the queue is full.
+- **`[GeneratedRegex]` and `NonBacktracking`:** the source generator does not support `NonBacktracking`. Use `new Regex(..., RegexOptions.NonBacktracking, timeout)` for untrusted text. `$` matches before a final `\n`; use `\z` when a value becomes a file name.
+- **JSON depth:** `JsonNode.Parse` throws `JsonException` for depth over the limit, and plain text like `[progress] ...` throws too. Scan the bracket depth first (skip string contents) to tell them apart and to redact a hostile structure whole.
+- **Suppression flag:** an `AsyncLocal<bool>` set in a sync hook flows to the later awaits of the calling async method. Save and restore the previous value so that a nested traced call does not inherit the flag.

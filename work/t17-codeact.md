@@ -52,3 +52,10 @@ From T21: expose `TodoManager` (`src/Nooa/Tools/`) to the REPL as `self.todo` (T
 - Dispose the instance (`DisposeAsync`) when the agent ends. Dispose kills the process group.
 - Upstream printed a hint line to the REPL stdout when a search had matches. `RunAsync` does not. Add the hint in the REPL layer if it is wanted.
 - A benchmark harness that grades background services after the run uses `ShellLifecycle.PreserveBackgroundServices()`.
+
+## Tracing hooks for cells and tools (from T19)
+
+T19 traces agent calls, generations and LLM calls. Cell and tool spans need hooks that have callers only here.
+- Add `BeforeCodeExecution` / `AfterCodeExecution` (and tool-execution if tools are traced) to `IInstrumentationHooks`, called through `InstrumentationHooks.CallBefore` / `CallAfter`. Skip them for a `[NoTrace]` method.
+- Implement them in `Nooa.Tracing.OpenInferenceHooks`: TOOL span `code_execution`, parent = the generation span, `input.value` = JSON `{"code": ...}` (cap 10 000 characters), output = JSON `{stdout, stderr, returned_value}`.
+- Write every value with `SpanAttributes.Set` (scrub and bound). Cell code and output are the most likely place for a secret.
