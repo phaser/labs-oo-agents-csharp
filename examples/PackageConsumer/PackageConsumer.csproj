@@ -8,13 +8,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
-  <!-- The caller passes the packed version: -p:NooaVersion=<version>. The version is not written in this repo. -->
-  <Target Name="RequireNooaVersion" BeforeTargets="CollectPackageReferences;_GenerateRestoreProjectSpec" Condition="'$(NooaVersion)' == ''">
-    <Error Text="Set -p:NooaVersion=&lt;version of the packed Nooa package&gt;." />
-  </Target>
-
   <ItemGroup>
-    <PackageReference Include="Nooa" Version="$(NooaVersion)" />
+    <PackageReference Include="Nooa" Version="0.1.0-alpha.1" />
   </ItemGroup>
 
 </Project>
